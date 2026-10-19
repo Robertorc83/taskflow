@@ -1,0 +1,125 @@
+[project]
+name = "taskmanager"
+version = "0.1.0"
+description = "Task management REST API — Clean Architecture + BDD"
+authors = [
+    { name = "Roberto Espinoza", email = "50055949+Robertorc83@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20.0",
+    "asyncpg>=0.32.0",
+    "celery[redis]>=5.6.3",
+    "fastapi>=0.149.0",
+    "limits[async-redis]>=5.8.0",
+    "pwdlib[argon2]>=0.3.1",
+    "pydantic-settings>=2.16.0",
+    "pydantic[email]>=2.14.1",
+    "pyjwt>=2.15.1",
+    "sqlalchemy[asyncio]>=2.1.5",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+taskmanager-seed = "taskmanager.seed:main"
+
+[build-system]
+requires = ["uv_build>=0.10.4,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "celery-types>=0.26.0",
+    "httpx2>=2.14.0",
+    "import-linter>=2.15",
+    "mypy>=2.4.0",
+    "pre-commit>=4.7.0",
+    "psycopg2-binary>=2.9.13",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-bdd>=9.0.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.1",
+    "testcontainers[postgres]>=4.15.0",
+]
+
+# ---------------------------------------------------------------- pytest / BDD
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+bdd_features_base_dir = "tests/features"
+markers = [
+    "integration: needs a real PostgreSQL database",
+    "wip: work in progress, excluded from CI",
+    "auth", "validation", "authorization",
+    "US-01", "US-02", "US-03", "US-04", "US-05", "US-06", "US-07", "US-08", "US-09",
+]
+filterwarnings = ["error", "ignore::DeprecationWarning:testcontainers.*", "ignore::DeprecationWarning:celery.*", "ignore::DeprecationWarning:kombu.*"]
+
+[tool.coverage.run]
+source = ["taskmanager"]
+branch = true
+concurrency = ["greenlet", "thread"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError", "\\.\\.\\.", "if __name__ == .__main__.:"]
+
+# ---------------------------------------------------------------- lint / types
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "N", "S", "ASYNC", "RUF", "PT", "C4", "PL", "TID"]
+ignore = ["PLR0913", "PLR2004"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S107", "PLR0913", "PLR0917", "N802"]
+"alembic/**" = ["N999"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+files = ["src", "tests"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["testcontainers.*", "pytest_bdd.*"]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------- architecture
+[tool.importlinter]
+root_package = "taskmanager"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Clean Architecture layers"
+type = "layers"
+layers = [
+    "taskmanager.presentation",
+    "taskmanager.infrastructure",
+    "taskmanager.application",
+    "taskmanager.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "Domain is pure (no frameworks)"
+type = "forbidden"
+source_modules = ["taskmanager.domain"]
+forbidden_modules = ["fastapi", "pydantic", "sqlalchemy", "celery", "jwt", "pwdlib", "limits", "redis"]
+
+[[tool.importlinter.contracts]]
+name = "Application is framework-free"
+type = "forbidden"
+source_modules = ["taskmanager.application"]
+forbidden_modules = ["fastapi", "pydantic", "sqlalchemy", "celery", "jwt", "pwdlib", "limits", "redis"]
