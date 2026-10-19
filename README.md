@@ -1,5 +1,8 @@
 # Taskflow — Task Management API + Web App
 
+[![CI](https://github.com/Robertorc83/taskflow/actions/workflows/ci.yml/badge.svg)](https://github.com/Robertorc83/taskflow/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A multi-user task manager. Users can create, assign, complete, filter and paginate tasks.
 
 - **Backend:** FastAPI, built with **Clean Architecture** and **BDD**.
@@ -65,6 +68,7 @@ make test-bdd    # backend: Gherkin scenarios only, verbose
 make test-unit   # backend: unit tests, no database (< 1 s)
 make lint        # ruff, mypy --strict, import-linter, eslint, tsc, prettier
 make web-test    # frontend tests + coverage
+make types       # regenerate frontend API types from the backend's OpenAPI document
 make e2e         # Playwright against the running stack
 make help        # everything else
 ```
@@ -207,6 +211,16 @@ See **[docs/ai-usage.md](docs/ai-usage.md)** for:
 - how each output was validated;
 - a table of **14 concrete defects in AI-generated code** and how each was caught and fixed;
 - the edge cases covered, and an assessment of performance and idiomatic quality.
+
+## Operations
+
+- Every response carries an `X-Request-ID`. A caller can supply a safe one (`[A-Za-z0-9._-]{1,64}`);
+  anything else is replaced, so untrusted input can't forge log lines.
+- Containers log one JSON object per line, with `request_id`, `method`, `path`, `status` and
+  `duration_ms`. Set `LOG_FORMAT=text` for readable local logs.
+- CI runs three jobs: backend (lint, types, contracts, tests on Postgres), frontend (an **API type
+  drift check** plus lint, types, tests and build), then **end-to-end**, where Playwright runs
+  against the full docker compose stack.
 
 ## Known limitations / next steps
 

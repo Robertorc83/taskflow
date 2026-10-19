@@ -34,7 +34,8 @@
   decisions (links to `docs/adr`), testing strategy and the GenAI section.
 - **D8** `docs/ai-usage.md` records prompts, how outputs were validated, and what was corrected.
 - **D9** Swagger UI is at `/docs` and ReDoc at `/redoc`. Every endpoint documents its responses.
-- **D10** A GitHub Actions workflow runs lint and tests (backend and frontend) on each push.
+- **D10** A GitHub Actions workflow runs lint and tests (backend and frontend) on each push, plus
+  *(CR-011)* an API-type drift check and the Playwright journey against the docker compose stack.
 
 ## Revision history
 
@@ -42,3 +43,4 @@
 |-----|------------|-----------------|--------|----|
 | 1   | 2026-10-19 | Initial version | —      | —  |
 | 2 | 2026-10-19 | Fail-closed image, gated seed, loopback-only ports | Security review | [CR-002](changes/CR-002-security-hardening.md) |
+| 3 | 2026-10-19 | D10: type drift check + E2E in CI | Hand-written types; E2E only manual | [CR-011](changes/CR-011-generated-api-types-and-e2e-in-ci.md) |

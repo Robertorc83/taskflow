@@ -59,3 +59,5 @@ Feature files live in [`backend/tests/features/`](../backend/tests/features).
 | [CR-007](changes/CR-007-background-job-wiring.md) | 2026-10-19 | Decouple the API from the worker; honest job tests | SPEC-005 | Implemented |
 | [CR-008](changes/CR-008-frontend-robustness.md) | 2026-10-19 | Frontend robustness and module boundaries | SPEC-007 | Implemented |
 | [CR-009](changes/CR-009-test-suite-modularity.md) | 2026-10-19 | Test-suite modularity (no behavior change) | — | Implemented |
+| [CR-010](changes/CR-010-request-tracing-and-structured-logs.md) | 2026-10-19 | Request tracing and structured logs | SPEC-000 | Implemented |
+| [CR-011](changes/CR-011-generated-api-types-and-e2e-in-ci.md) | 2026-10-19 | Generated API types with a drift check; E2E in CI | SPEC-007, SPEC-008 | Implemented |
