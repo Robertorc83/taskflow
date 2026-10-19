@@ -2,7 +2,7 @@
 
 | Field    | Value                   |
 |----------|-------------------------|
-| Status   | Approved                |
+| Status   | Done     |
 | Stories  | US-08                   |
 | Features | `notifications.feature` |
 

@@ -34,15 +34,15 @@ That gives us a full audit trail of *why* the system changed, not only *what* ch
 
 | Spec | Title | Stories | Status | Feature file(s) |
 |------|-------|---------|--------|-----------------|
-| [SPEC-000](SPEC-000-architecture.md) | Architecture & non-functional requirements | all | Approved | — |
-| [SPEC-001](SPEC-001-authentication.md) | Registration & JWT authentication | US-01 | Approved | `authentication.feature` |
-| [SPEC-002](SPEC-002-task-crud.md) | Task CRUD | US-02, US-05 | Approved | `task_crud.feature` |
-| [SPEC-003](SPEC-003-task-listing.md) | Listing, pagination & filtering | US-03, US-04 | Approved | `task_listing.feature` |
-| [SPEC-004](SPEC-004-assignment-completion.md) | Assignment & completion | US-06, US-07 | Approved | `assignment_completion.feature` |
-| [SPEC-005](SPEC-005-background-notifications.md) | Asynchronous notifications (Celery) | US-08 | Approved | `notifications.feature` |
-| [SPEC-006](SPEC-006-rate-limiting.md) | Rate limiting | US-09 | Approved | `rate_limiting.feature` |
-| [SPEC-007](SPEC-007-frontend.md) | Web frontend | US-01..07 | Approved | `frontend/src/**/*.test.tsx`, `frontend/e2e` |
-| [SPEC-008](SPEC-008-delivery.md) | Delivery: Docker, seed data, docs, quality gates | — | Approved | — |
+| [SPEC-000](SPEC-000-architecture.md) | Architecture & non-functional requirements | all | Done | — |
+| [SPEC-001](SPEC-001-authentication.md) | Registration & JWT authentication | US-01 | Done | `authentication.feature` |
+| [SPEC-002](SPEC-002-task-crud.md) | Task CRUD | US-02, US-05 | Done | `task_crud.feature` |
+| [SPEC-003](SPEC-003-task-listing.md) | Listing, pagination & filtering | US-03, US-04 | Done | `task_listing.feature` |
+| [SPEC-004](SPEC-004-assignment-completion.md) | Assignment & completion | US-06, US-07 | Done | `assignment_completion.feature` |
+| [SPEC-005](SPEC-005-background-notifications.md) | Asynchronous notifications (Celery) | US-08 | Done | `notifications.feature` |
+| [SPEC-006](SPEC-006-rate-limiting.md) | Rate limiting | US-09 | Done | `rate_limiting.feature` |
+| [SPEC-007](SPEC-007-frontend.md) | Web frontend | US-01..07 | Done | `frontend/src/**/*.test.tsx`, `frontend/e2e` |
+| [SPEC-008](SPEC-008-delivery.md) | Delivery: Docker, seed data, docs, quality gates | — | Done | — |
 
 Feature files live in [`backend/tests/features/`](../backend/tests/features).
 

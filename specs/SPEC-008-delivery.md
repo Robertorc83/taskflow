@@ -2,7 +2,7 @@
 
 | Field    | Value    |
 |----------|----------|
-| Status   | Approved |
+| Status   | Done     |
 | Stories  | —        |
 | Features | —        |
 

@@ -2,7 +2,7 @@
 
 | Field    | Value               |
 |----------|---------------------|
-| Status   | Approved            |
+| Status   | Done     |
 | Stories  | US-02, US-05        |
 | Features | `task_crud.feature` |
 

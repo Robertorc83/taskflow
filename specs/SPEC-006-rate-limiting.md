@@ -2,7 +2,7 @@
 
 | Field    | Value                   |
 |----------|-------------------------|
-| Status   | Approved                |
+| Status   | Done     |
 | Stories  | US-09                   |
 | Features | `rate_limiting.feature` |
 

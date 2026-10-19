@@ -49,12 +49,12 @@ Each story maps to **one `.feature` file** under `backend/tests/features/`. No s
 | API framework      | FastAPI                                  | Native OpenAPI/Swagger, Pydantic validation, async, DI     |
 | Python / tooling   | Python 3.12, **uv**, `pyproject.toml`    | Fast, reproducible lockfile, single config file            |
 | ORM / migrations   | SQLAlchemy 2.0 (async) + Alembic         | Typed mappings, explicit migrations                        |
-| Database           | PostgreSQL 16 (SQLite in-memory for unit-level repo tests is **not** used — see §8) | Prod parity |
+| Database           | PostgreSQL 16 everywhere, including tests (see §8) | Prod parity |
 | Auth               | JWT (access + refresh) via `pyjwt`, `argon2` hashing (`pwdlib`) | Stateless, modern hash             |
-| Rate limiting      | `slowapi` backed by Redis                | Per-IP + per-user limits, shared across workers            |
+| Rate limiting      | `limits` (moving window, Redis) via FastAPI dependencies | Per-IP + per-user limits, shared across workers; no module-global limiter (ADR-0008) |
 | Background jobs    | Celery + Redis                           | Spec requirement; retries & visibility                     |
 | BDD                | `pytest-bdd` (Gherkin)                   | Executable specs, plain pytest fixtures                    |
-| Unit/integration   | `pytest`, `pytest-asyncio`, `httpx.AsyncClient`, `factory-boy`, `testcontainers` | Real Postgres in tests |
+| Unit/integration   | `pytest`, `pytest-asyncio`, Starlette `TestClient` (`httpx2`), hand-written fakes, `testcontainers` | Real Postgres in tests |
 | Quality            | `ruff` (lint + format), `mypy --strict`, `pre-commit`, `import-linter` | Enforce style + **layer boundaries** |
 | Frontend           | React 18 + TypeScript + Vite             | Fast DX, strict typing                                     |
 | FE server state    | TanStack Query                           | Caching, pagination, mutations; no hand-rolled fetch state |
@@ -112,22 +112,24 @@ backend/
 │   │   ├── security/           # JwtTokenService, Argon2PasswordHasher
 │   │   ├── tasks/              # celery_app.py, CeleryEventPublisher, task handlers
 │   │   ├── rate_limit.py
+│   │   ├── container.py        # API composition root (adapters built from Settings)
 │   │   └── config.py           # pydantic-settings; the ONLY place env vars are read
 │   ├── presentation/
 │   │   ├── api/v1/             # routers: auth.py, tasks.py, users.py
 │   │   ├── schemas/            # Pydantic request/response models
-│   │   ├── dependencies.py     # FastAPI Depends wiring (composition root helpers)
-│   │   └── error_handlers.py   # domain/app exceptions → HTTP problem responses
+│   │   ├── dependencies.py     # FastAPI Depends wiring (builds use cases per request)
+│   │   ├── errors.py           # domain/app exceptions → HTTP problem responses
+│   │   └── app.py              # create_app() factory
 │   ├── seed.py                 # demo data + credentials
-│   └── main.py                 # app factory create_app()
+│   └── main.py                 # ASGI entry point
 └── tests/
     ├── features/               # *.feature — Gherkin, one per user story
     ├── step_defs/              # pytest-bdd step implementations (API-level, via httpx)
     ├── unit/
     │   ├── domain/             # pure, no I/O, no mocks needed
     │   └── application/        # use cases with in-memory fakes of ports
-    ├── integration/            # repositories against real Postgres (testcontainers)
-    ├── fakes/                  # InMemoryTaskRepository, FakeClock, SpyEventPublisher
+    ├── integration/            # migrations, seed, DB constraints against real Postgres
+    ├── fakes.py                # InMemoryUnitOfWork, FixedClock, SpyEventPublisher, …
     └── conftest.py
 ```
 
@@ -172,7 +174,10 @@ Indexes: `(owner_id, status)`, `(assignee_id, status)`, `due_date`.
 
 ## 6. BDD Workflow — how every change is made
 
-We work **outside-in**: behavior → acceptance test → unit tests → code.
+We work **outside-in**: spec → behavior → acceptance test → unit tests → code.
+
+Specs live in `specs/` (see `specs/README.md`). After a spec is `Approved`, **every change or fix
+is a Change Request** (`specs/changes/CR-NNN-*.md`): update the scenario first (red), then the code.
 
 1. **Discover** — pick a user story (§2). Write/extend its `.feature` file with concrete examples.
    Cover the happy path, at least one validation failure, and one authorization failure.
@@ -264,7 +269,7 @@ Celery tasks run with `task_always_eager=True` in tests; `EventPublisher` is fak
   validation→422, auth→401, rate-limit→429 (with `Retry-After`).
   Don't leak existence: a task the user cannot see returns **404**, not 403.
 - **Auth**: `Authorization: Bearer <access>`; access TTL 15 min, refresh 7 days. Secret from env.
-- **Rate limits**: auth endpoints 5/min per IP; default 100/min per user. Configurable via settings.
+- **Rate limits**: auth endpoints 10/min per IP; default 100/min per user. Configurable via settings (SPEC-006).
 - Every endpoint declares `response_model`, status codes, and `responses={...}` so Swagger is complete.
 
 ---
@@ -276,10 +281,10 @@ Celery tasks run with `task_always_eager=True` in tests; `EventPublisher` is fak
 - Integration tests run against **real Postgres** via `testcontainers` (filter/date semantics
   differ between SQLite and Postgres — we don't test on a different engine than we ship).
 - `seed.py` is idempotent and creates demo users:
-  - `admin@example.com` / `Admin123!`
   - `alice@example.com` / `Alice123!`
   - `bob@example.com` / `Bob123!`
-  plus ~25 tasks across statuses/due dates so pagination and filters are demoable.
+  - `carol@example.com` / `Carol123!`
+  plus 25 tasks across statuses/due dates so pagination and filters are demoable.
 
 ---
 

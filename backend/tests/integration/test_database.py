@@ -88,7 +88,7 @@ async def test_duplicate_email_race_is_reported_as_conflict(engine: AsyncEngine)
         await uow.users.add(user())
         await uow.commit()
 
-    with pytest.raises(ConflictError):
-        async with uow_for(engine) as uow:
-            await uow.users.add(user())
+    async with uow_for(engine) as uow:
+        await uow.users.add(user())
+        with pytest.raises(ConflictError):
             await uow.commit()

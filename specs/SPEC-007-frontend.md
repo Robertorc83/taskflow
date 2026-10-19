@@ -2,7 +2,7 @@
 
 | Field    | Value                                              |
 |----------|----------------------------------------------------|
-| Status   | Approved                                           |
+| Status   | Done     |
 | Stories  | US-01 … US-07                                      |
 | Features | `frontend/src/**/*.test.tsx` (Given/When/Then), `frontend/e2e/*.spec.ts` |
 

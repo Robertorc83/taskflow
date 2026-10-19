@@ -2,7 +2,7 @@
 
 | Field    | Value                           |
 |----------|---------------------------------|
-| Status   | Approved                        |
+| Status   | Done     |
 | Stories  | US-06, US-07                    |
 | Features | `assignment_completion.feature` |
 

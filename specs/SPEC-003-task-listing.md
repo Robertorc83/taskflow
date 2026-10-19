@@ -2,7 +2,7 @@
 
 | Field    | Value                  |
 |----------|------------------------|
-| Status   | Approved               |
+| Status   | Done     |
 | Stories  | US-03, US-04           |
 | Features | `task_listing.feature` |
 
