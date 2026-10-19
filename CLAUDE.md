@@ -282,7 +282,7 @@ Celery tasks run with `task_always_eager=True` in tests; `EventPublisher` is fak
   differ between SQLite and Postgres — we don't test on a different engine than we ship).
 - `seed.py` is idempotent and creates demo users:
   - `alice@example.com` / `Alice123!`
-  - `bob@example.com` / `Bob123!`
+  - `bob@example.com` / `Bob12345!`
   - `carol@example.com` / `Carol123!`
   plus 25 tasks across statuses/due dates so pagination and filters are demoable.
 

@@ -11,14 +11,15 @@
 - **D1** `docker compose up --build` starts `db` (Postgres 16), `redis` (Redis 7), `api`,
   `worker` and `web`. The API runs migrations and seeds data on start. Health checks gate
   start-up order.
-- **D2** The seed is **idempotent** and creates demo users plus about 25 tasks, spread across
+- **D2** *(CR-002)* Demo data is seeded only with `SEED_DEMO_DATA=true` outside production (the compose
+  stack enables it; the image never does). The seed is **idempotent** and creates demo users plus about 25 tasks, spread across
   statuses, due dates (including overdue ones) and assignments, so pagination and filters are
   visible straight away.
 
   | Email               | Password    |
   |---------------------|-------------|
   | `alice@example.com` | `Alice123!` |
-  | `bob@example.com`   | `Bob123!`   |
+  | `bob@example.com`   | `Bob12345!`   |
   | `carol@example.com` | `Carol123!` |
 
 - **D3** The backend `Dockerfile` is multi-stage (`uv sync --frozen`), runs as a non-root user,
@@ -40,3 +41,4 @@
 | Rev | Date       | Change          | Reason | CR |
 |-----|------------|-----------------|--------|----|
 | 1   | 2026-10-19 | Initial version | —      | —  |
+| 2 | 2026-10-19 | Fail-closed image, gated seed, loopback-only ports | Security review | [CR-002](changes/CR-002-security-hardening.md) |

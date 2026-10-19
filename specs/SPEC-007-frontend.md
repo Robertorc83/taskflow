@@ -45,8 +45,11 @@ Tailwind CSS · Vitest + Testing Library + MSW · Playwright (smoke E2E).
 - **F12** Only the owner sees edit, assign and delete controls. The assignee sees complete and reopen.
 
 ### Global
-- **F13** An expired access token is refreshed once, transparently. If the refresh fails, the user
-  is logged out and sent to `/login`.
+- **F13** An expired access token is refreshed once, transparently. If the refresh endpoint
+  *rejects* the token (400/401/422) the user is logged out; transient failures (429, 5xx, network)
+  keep the session *(CR-008)*.
+- **F17** *(CR-005)* Every request sends `X-Timezone`. *(CR-004)* Reopen uses `POST …/reopen`.
+  *(CR-008)* A page past the end redirects to the last page.
 - **F14** Responsive from 360 px wide. The filters collapse into a drawer on mobile.
 - **F15** Accessible: labelled inputs, focus-visible styles, keyboard-operable modals, `aria-live`
   for toasts.
@@ -84,3 +87,4 @@ Component and page tests are named in Given/When/Then form, for example
 | Rev | Date       | Change          | Reason | CR |
 |-----|------------|-----------------|--------|----|
 | 1   | 2026-10-19 | Initial version | —      | —  |
+| 2 | 2026-10-19 | F13 refined; F17 added; module boundaries enforced by ESLint | Review findings | [CR-008](changes/CR-008-frontend-robustness.md) |

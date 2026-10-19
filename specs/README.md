@@ -51,3 +51,11 @@ Feature files live in [`backend/tests/features/`](../backend/tests/features).
 | CR | Date | Title | Specs affected | Status |
 |----|------|-------|----------------|--------|
 | [CR-001](changes/CR-001-bound-latency-on-broker-outage.md) | 2026-10-19 | Bound request latency during a broker outage | SPEC-005 | Implemented |
+| [CR-002](changes/CR-002-security-hardening.md) | 2026-10-19 | Security hardening from review | SPEC-001, 003, 006, 008 | Implemented |
+| [CR-003](changes/CR-003-serialize-concurrent-task-changes.md) | 2026-10-19 | Serialize concurrent changes to a task | SPEC-004 | Implemented |
+| [CR-004](changes/CR-004-reopen-command.md) | 2026-10-19 | Explicit reopen command for owner or assignee | SPEC-004, 007 | Implemented |
+| [CR-005](changes/CR-005-user-time-zone.md) | 2026-10-19 | "Today" follows the user's time zone | SPEC-000, 002 | Implemented |
+| [CR-006](changes/CR-006-rules-in-the-right-layer.md) | 2026-10-19 | Business rules in the right layer | SPEC-001, 002 | Implemented |
+| [CR-007](changes/CR-007-background-job-wiring.md) | 2026-10-19 | Decouple the API from the worker; honest job tests | SPEC-005 | Implemented |
+| [CR-008](changes/CR-008-frontend-robustness.md) | 2026-10-19 | Frontend robustness and module boundaries | SPEC-007 | Implemented |
+| [CR-009](changes/CR-009-test-suite-modularity.md) | 2026-10-19 | Test-suite modularity (no behavior change) | — | Implemented |

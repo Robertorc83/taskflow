@@ -8,9 +8,9 @@ A multi-user task manager. Users can create, assign, complete, filter and pagina
 
 | | |
 |---|---|
-| **Backend tests** | 165 tests (71 Gherkin scenario runs, 90 unit, 4 integration), **97.4% line+branch coverage**, real Postgres |
-| **Frontend tests** | 54 component tests (96.8% statements) + Playwright journey on desktop and mobile |
-| **Static checks** | `mypy --strict` · ruff · import-linter layer contracts · ESLint strict · Prettier |
+| **Backend tests** | 188 tests (79 Gherkin scenario runs, 104 unit, 5 integration), **97.1% line+branch coverage**, real Postgres |
+| **Frontend tests** | 66 component tests (97.0% statements) + Playwright journey on desktop and mobile |
+| **Static checks** | `mypy --strict` · ruff · 5 import-linter architecture contracts · ESLint strict with module-boundary rules · Prettier |
 
 ---
 
@@ -29,12 +29,13 @@ docker compose up --build        # or: make up
 
 ### Demo credentials
 
-These are seeded automatically and idempotently on API start.
+The compose stack seeds these on API start (idempotent). The image itself never seeds demo users
+and refuses the dev JWT secret: it defaults to `ENVIRONMENT=production` and fails closed (CR-002).
 
 | Email | Password |
 |-------|----------|
 | `alice@example.com` | `Alice123!` |
-| `bob@example.com` | `Bob123!` |
+| `bob@example.com` | `Bob12345!` |
 | `carol@example.com` | `Carol123!` |
 
 The seed creates 25 tasks across all statuses, including overdue ones and tasks assigned between
@@ -48,7 +49,7 @@ Redis, and for the test database).
 
 ```bash
 make install                              # uv sync, npm ci, pre-commit hooks
-docker compose up -d db redis             # infrastructure only
+docker compose up -d db redis             # infrastructure only (loopback: db 55432, redis 6380)
 cp .env.example backend/.env
 cd backend && uv run alembic upgrade head && uv run python -m taskmanager.seed
 uv run uvicorn taskmanager.main:app --reload                               # API on :8000
@@ -142,7 +143,10 @@ All endpoints are under `/api/v1`. Errors use `application/problem+json`.
 | `PATCH /tasks/{id}` | owner | partial update; `null` clears a field; setting status back to pending reopens a completed task |
 | `DELETE /tasks/{id}` | owner | |
 | `PUT /tasks/{id}/assignee` | owner | `{"assignee_id": null}` unassigns |
-| `POST /tasks/{id}/complete` | owner or assignee | completing twice returns 409 |
+| `POST /tasks/{id}/complete` | owner or assignee | completing twice returns 409; concurrent completes serialize (row lock) |
+| `POST /tasks/{id}/reopen` | owner or assignee | reopening an open task returns 409 |
+
+Send `X-Timezone: <IANA zone>` (the web app does) so "today" and `is_overdue` follow the user's calendar.
 
 ## Key decisions
 
@@ -174,6 +178,26 @@ Two settings keep the backend suite honest:
 - **Warnings are errors** (`filterwarnings = error`), so deprecated APIs surface immediately.
 - **Coverage counts branches and is read, not just thresholded.** That is how the hidden 6-second
   hang behind CR-001 was found.
+
+## Independent review round
+
+After the first version, four review sub-agents audited **clean architecture, security,
+modularity and correctness** in parallel. They worked read-only, and every claim had to come with
+evidence. I reproduced the main findings myself before fixing them. Each fix went through a change
+request, CR-002 to CR-009, with a failing test first. Highlights:
+
+- **Rate-limit bypass:** a spoofed `X-Forwarded-For` reset the login limit. Fixed with
+  trusted-proxy-only settings, verified live.
+- **Unsafe defaults:** the public dev JWT secret was accepted, and demo users were seeded in every
+  environment. The image now fails closed.
+- **Race condition:** parallel `complete` calls all succeeded. Fixed with a row lock and a
+  concurrency test on real Postgres.
+- **Contradicting specs:** an assignee's Reopen button always got a 403. Fixed with an explicit
+  reopen command (CR-004).
+- **Time zones:** "today" differed between browser and server. Fixed with the `X-Timezone` header
+  (CR-005).
+- **Leaking tests:** the test suite was quietly sending real jobs to the developer's local Redis.
+  Found while fixing a test that passed for the wrong reason (CR-007).
 
 ## GenAI usage
 

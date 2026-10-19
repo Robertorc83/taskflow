@@ -19,6 +19,9 @@ clients on everything else.
 - **R4** Limits are shared across API processes (Redis storage) and are configurable through
   environment variables. They can be disabled for local debugging.
 - **R5** Health and docs endpoints are not limited.
+- **R6** *(CR-002)* The client IP comes only from a **trusted** reverse proxy
+  (`FORWARDED_ALLOW_IPS`), and the proxy overwrites `X-Forwarded-For`. Clients cannot pick their
+  own rate-limit key.
 
 ## Acceptance criteria (`rate_limiting.feature`)
 
@@ -42,3 +45,4 @@ clients on everything else.
 | Rev | Date       | Change          | Reason | CR |
 |-----|------------|-----------------|--------|----|
 | 1   | 2026-10-19 | Initial version | —      | —  |
+| 2 | 2026-10-19 | R6 trusted proxy only | Spoofed X-Forwarded-For bypassed the auth limit | [CR-002](changes/CR-002-security-hardening.md) |

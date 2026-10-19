@@ -218,3 +218,54 @@ procedural: read the installed library's source before using it (as was done for
 **What I would not take from the AI without review:** dependency choices (provenance), anything
 touching auth, and any "it passes" claim without reading timing and coverage. Item 7 above passed
 its test and was still wrong.
+
+---
+
+## 7. Second pass: multi-agent review
+
+**Prompt:**
+> Run an independent review of the whole repository before submission. Launch four read-only
+> sub-agents in parallel, one per dimension: Clean Architecture, security, modularity and bugs.
+> None of them may modify code. For each finding, report:
+> - severity, `file:line`, a concrete failure scenario and a proposed fix;
+> - **CONFIRMED** (reproduced, with the evidence: a request, a test or a log) or **PLAUSIBLE**
+>   (from reading the code only);
+> - whether it is a real defect or a trade-off already documented in an ADR or spec.
+>
+> Also list what you checked and found sound, so the coverage of the review is visible. I'll
+> decide which findings become change requests.
+
+Separating real defects from documented trade-offs kept the noise down, and the "checked and
+found sound" lists showed what each agent actually covered.
+
+**How the output was handled:**
+1. **Reproduce before fixing.** I re-ran the rate-limit bypass and the reopen 403 myself. Two
+   findings were reported by two agents independently, which raised confidence in them.
+2. **Separate decisions from defects.** The reopen permission and the meaning of "today" were
+   *product decisions* the specs left open or contradicted. Those went to the user, not into a
+   silent fix.
+3. **Red, then green, through CRs (CR-002 to CR-009).** New scenarios and tests were written first
+   and observed failing: 7 BDD scenarios, the race test (8 out of 8 completes succeeded),
+   password-rule tests and publisher tests.
+4. **Verify live.** Spoofed-XFF loops through nginx and directly on :8000, the fail-closed image
+   started with no env, 6 parallel completes, and Playwright.
+
+**What the review itself missed, and the fixing exposed.** While making a weak test honest (the
+outage scenario now asserts the failure is *logged*), the full run failed while the isolated run
+passed. Debugging showed Celery reusing a cached producer connection to the developer's **real
+local Redis**: 13 leaked test jobs. The fix is architectural (send jobs by name from an API-owned
+producer app, `memory://` broker in tests), not a patch to the test.
+
+| # | Finding (source) | Fix |
+|---|------------------|-----|
+| 15 | Spoofed `X-Forwarded-For` bypassed the auth rate limit (security, bugs) | Trust only nginx's IP; nginx overwrites XFF (CR-002) |
+| 16 | Dev JWT secret accepted; demo users seeded in every env (security) | Image defaults to production and fails closed; seed gated (CR-002) |
+| 17 | Postgres published on 0.0.0.0 with default creds (security) | Loopback-only, non-default ports (CR-002) |
+| 18 | Parallel completes all succeeded (bugs) | `SELECT … FOR UPDATE` in mutating use cases (CR-003) |
+| 19 | Assignee Reopen always got 403; specs contradicted each other (architecture, bugs) | `POST /reopen` for owner or assignee (CR-004) |
+| 20 | "Today": browser local time vs server UTC (architecture, bugs) | `X-Timezone` + `ZonedClock`, no domain change (CR-005) |
+| 21 | Password rule only in Pydantic; seed violated it (architecture, modularity) | Enforced in `RegisterUser` (CR-006) |
+| 22 | API imported worker code; Celery configured at import time (architecture, modularity) | Jobs by name; strict import-linter contract (CR-007) |
+| 23 | Tests passing for the wrong reason (bugs) | Assert no job failed and the failure was logged; this exposed the Redis leak (CR-007) |
+| 24 | Refresh failure always logged out; stale cache after a partial edit; empty last page (bugs) | CR-008 |
+| 25 | Unit tests imported the whole stack (modularity) | Conftest split; verified with `-X importtime` (CR-009) |

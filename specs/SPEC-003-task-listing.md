@@ -19,7 +19,7 @@ list grows large.
 - **R4** `due_from` and `due_to` are inclusive calendar dates; either may be omitted. Tasks with no
   due date never match a date filter. If `due_from > due_to` the API returns `422`.
 - **R5** Filters combine with AND.
-- **R6** Pagination is page-based: `page ≥ 1`, `1 ≤ size ≤ 100`, default `size = 20`. A page past
+- **R6** Pagination is page-based: `1 ≤ page ≤ 10 000` *(CR-002)*, `1 ≤ size ≤ 100`, default `size = 20`. A page past
   the end returns an empty `items` list, not an error.
 - **R7** `ordering` ∈ `created_at`, `-created_at` (default), `due_date`, `-due_date`. When sorting
   by due date, tasks without a due date always come **last**. Ties break on `created_at`, then
@@ -45,7 +45,7 @@ list grows large.
 | R3 | Filter by status (outline) · Reject an invalid status filter |
 | R4 | Filter by due date range · Filter by due date from · Reject an inverted date range |
 | R5 | Combine status and due date filters |
-| R6 | Paginate results · A page past the end is empty · Reject a page size above the maximum |
+| R6 | Paginate results · A page past the end is empty · Reject a page size above the maximum · Reject an absurd page number |
 | R7 | Order by due date |
 
 ## Design notes
@@ -62,3 +62,4 @@ list grows large.
 | Rev | Date       | Change          | Reason | CR |
 |-----|------------|-----------------|--------|----|
 | 1   | 2026-10-19 | Initial version | —      | —  |
+| 2 | 2026-10-19 | Upper bound on page | page=1e18 caused a 500 | [CR-002](changes/CR-002-security-hardening.md) |

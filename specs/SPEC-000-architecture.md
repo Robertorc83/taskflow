@@ -60,7 +60,10 @@ layers. Only the adapters differ.
   to HTTP, as RFC 9457 `application/problem+json`.
 - **Transactions**: one Unit of Work per use case. Events are published **after** commit, so no
   notification goes out for a rolled-back change.
-- **Time**: all timestamps are timezone-aware UTC. Due dates are calendar dates, with no time zone.
+- **Time**: all timestamps are timezone-aware and serialized in UTC. Due dates are calendar
+  dates, with no time zone. *(CR-005)* **"Today" is the caller's local date**: clients send
+  `X-Timezone: <IANA zone>` (missing → UTC, unknown → 422), and the request's clock is expressed
+  in that zone.
 - **IDs**: UUIDv4, generated in the domain. Entities exist before they are persisted.
 - **Visibility**: a user sees tasks they **own** or are **assigned to**. When a user cannot see a
   resource the API returns `404`, never `403`, so it does not reveal that the resource exists.
@@ -78,9 +81,11 @@ layers. Only the adapters differ.
 | NFR-6 | No errors or warnings in the browser console                               | SPEC-007 |
 | NFR-7 | OpenAPI docs complete: schemas, auth, error responses                      | `/docs` |
 | NFR-8 | Passwords hashed with Argon2; JWT secret ≥ 32 bytes outside dev            | SPEC-001 |
+| NFR-9 | *(CR-002)* Fail closed: the image defaults to production, trusts only the configured proxy, publishes no data stores to the network | `docker compose ps`, CR-002 |
 
 ## Revision history
 
 | Rev | Date       | Change          | Reason | CR |
 |-----|------------|-----------------|--------|----|
 | 1   | 2026-10-19 | Initial version | —      | —  |
+| 2 | 2026-10-19 | Time zone rule; NFR-9 fail-closed deployment | Review findings | [CR-005](changes/CR-005-user-time-zone.md) |

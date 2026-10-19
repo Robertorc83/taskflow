@@ -19,7 +19,7 @@ We use stateless access tokens with a short life and refresh tokens with a longe
 ## Business rules
 
 - **R1** Emails are unique and case-insensitive. They are stored lower-cased and trimmed.
-- **R2** Passwords are 8–128 characters. They are stored only as an Argon2 hash and never returned.
+- **R2** Passwords are 8–128 characters, enforced by the `RegisterUser` use case *(CR-006)*. They are stored only as an Argon2 hash and never returned.
 - **R3** Full name is required, 1–100 characters after trimming.
 - **R4** Login with an unknown email or a wrong password returns the same `401`. This prevents
   user enumeration.
@@ -72,3 +72,4 @@ Errors: `409` duplicate email, `422` validation, `401` bad credentials or token,
 | Rev | Date       | Change          | Reason | CR |
 |-----|------------|-----------------|--------|----|
 | 1   | 2026-10-19 | Initial version | —      | —  |
+| 2 | 2026-10-19 | R2 enforced in the application layer; seed password fixed | Rule lived only in Pydantic; seed violated it | [CR-006](changes/CR-006-rules-in-the-right-layer.md) |

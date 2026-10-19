@@ -60,3 +60,4 @@ Use case ──commit──► EventPublisher.publish(event)
 |-----|------------|-----------------|--------|----|
 | 1   | 2026-10-19 | Initial version | —      | —  |
 | 2   | 2026-10-19 | Added R7: bounded publish latency | Outage blocked requests ~6 s (redis-py retries) | [CR-001](changes/CR-001-bound-latency-on-broker-outage.md) |
+| 3 | 2026-10-19 | Jobs sent by name; transient-only retries; loud unknown events; honest tests | API imported worker; tests leaked into a real Redis | [CR-007](changes/CR-007-background-job-wiring.md) |

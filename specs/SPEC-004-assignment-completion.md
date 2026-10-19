@@ -24,6 +24,10 @@ they are explicit commands rather than generic PATCH fields.
 - **R7** Each successful assignment to a user emits a `TaskAssigned` event. Each completion emits
   `TaskCompleted`. Events are published only after the transaction commits (SPEC-005).
 - **R8** Creating a task with an `assignee_id` applies R2 and emits `TaskAssigned`.
+- **R9** *(CR-004)* Whoever may complete a task (owner or assignee) may **reopen** it via
+  `POST /tasks/{id}/reopen`. Reopening a task that is not completed gives `409`.
+- **R10** *(CR-003)* Changes to one task are serialized (row lock). Concurrent completions yield
+  exactly one success and one `TaskCompleted` event.
 
 ## API contract
 
@@ -31,6 +35,7 @@ they are explicit commands rather than generic PATCH fields.
 |--------|---------------------------------|--------------------------|---------|
 | PUT    | `/api/v1/tasks/{id}/assignee`   | `{assignee_id: uuid \| null}` | `200` `Task` |
 | POST   | `/api/v1/tasks/{id}/complete`   | —                        | `200` `Task` |
+| POST   | `/api/v1/tasks/{id}/reopen`     | —                        | `200` `Task` |
 
 ## Acceptance criteria (`assignment_completion.feature`)
 
@@ -44,6 +49,8 @@ they are explicit commands rather than generic PATCH fields.
 | R6 | The owner completes a task |
 | R7 | Assign a task to another user · The assignee completes a task |
 | R8 | Create a task already assigned to someone |
+| R9 | The assignee reopens a completed task · Reopening a task that is not completed is a conflict · A stranger cannot reopen a task |
+| R10 | `tests/integration/test_database.py::test_concurrent_completions_succeed_exactly_once` |
 
 ## Design notes
 
@@ -57,3 +64,5 @@ they are explicit commands rather than generic PATCH fields.
 | Rev | Date       | Change          | Reason | CR |
 |-----|------------|-----------------|--------|----|
 | 1   | 2026-10-19 | Initial version | —      | —  |
+| 2 | 2026-10-19 | R9 reopen command | SPEC-007 F12 vs SPEC-002 R4 conflict (assignee got 403) | [CR-004](changes/CR-004-reopen-command.md) |
+| 3 | 2026-10-19 | R10 serialized changes | Parallel completes all succeeded | [CR-003](changes/CR-003-serialize-concurrent-task-changes.md) |
