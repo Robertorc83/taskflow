@@ -61,7 +61,12 @@ services:
     command: ["celery", "-A", "taskmanager.infrastructure.tasks.worker", "worker", "--loglevel=INFO", "--concurrency=2"]
     environment: *backend-env
     healthcheck:
-      disable: true
+      # The worker answers a broker round-trip ping (replaces the image's HTTP check).
+      test: ["CMD-SHELL", "celery -A taskmanager.infrastructure.tasks.worker inspect ping -d celery@$$HOSTNAME --timeout 5"]
+      interval: 15s
+      timeout: 10s
+      start_period: 20s
+      retries: 5
     depends_on:
       api:
         condition: service_healthy  # migrations have run

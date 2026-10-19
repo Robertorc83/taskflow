@@ -12,6 +12,7 @@ from tests.step_defs.auth_steps import *  # noqa: F403
 from tests.step_defs.common_steps import *  # noqa: F403
 from tests.step_defs.listing_steps import *  # noqa: F403
 from tests.step_defs.notification_steps import *  # noqa: F403
+from tests.step_defs.observability_steps import *  # noqa: F403
 from tests.step_defs.rate_limit_steps import *  # noqa: F403
 from tests.step_defs.task_steps import *  # noqa: F403
 from tests.step_defs.world import *  # noqa: F403

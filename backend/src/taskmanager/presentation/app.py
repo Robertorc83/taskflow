@@ -1,4 +1,3 @@
-import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -7,9 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from taskmanager.infrastructure.config import Settings, get_settings
 from taskmanager.infrastructure.container import Container
+from taskmanager.infrastructure.logging import configure_logging
 from taskmanager.presentation.api.v1 import auth, tasks, users
 from taskmanager.presentation.dependencies import ContainerDep
 from taskmanager.presentation.errors import register_error_handlers
+from taskmanager.presentation.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
 
 DESCRIPTION = """
 Task management API: create, assign, complete and filter tasks.
@@ -26,7 +27,7 @@ Errors follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) (`application/p
 def create_app(settings: Settings | None = None, *, container: Container | None = None) -> FastAPI:
     settings = settings or get_settings()
     container = container or Container.build(settings)
-    logging.basicConfig(level=settings.log_level)
+    configure_logging(settings.log_level, settings.log_format)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -46,9 +47,11 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
         allow_origins=settings.cors_origins,
         allow_credentials=False,
         allow_methods=["*"],
-        allow_headers=["Authorization", "Content-Type"],
-        expose_headers=["Retry-After"],
+        allow_headers=["Authorization", "Content-Type", "X-Timezone", REQUEST_ID_HEADER],
+        expose_headers=["Retry-After", REQUEST_ID_HEADER],
     )
+    # Added last = outermost: every response (including CORS preflights and errors) gets an ID.
+    app.add_middleware(RequestContextMiddleware)
     register_error_handlers(app)
 
     for router in (auth.router, users.router, tasks.router):

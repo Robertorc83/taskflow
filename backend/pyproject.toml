@@ -54,7 +54,7 @@ bdd_features_base_dir = "tests/features"
 markers = [
     "integration: needs a real PostgreSQL database",
     "wip: work in progress, excluded from CI",
-    "auth", "validation", "authorization",
+    "auth", "validation", "authorization", "ops",
     "US-01", "US-02", "US-03", "US-04", "US-05", "US-06", "US-07", "US-08", "US-09",
 ]
 filterwarnings = ["error", "ignore::DeprecationWarning:testcontainers.*", "ignore::DeprecationWarning:celery.*", "ignore::DeprecationWarning:kombu.*"]

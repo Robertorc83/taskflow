@@ -23,9 +23,9 @@ COPY --chown=app:app src ./src
 # Fail closed: the image assumes production (refuses the dev JWT secret, never seeds demo users)
 # and trusts no proxy headers unless FORWARDED_ALLOW_IPS names the reverse proxy.
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 \
-    ENVIRONMENT=production SEED_DEMO_DATA=false FORWARDED_ALLOW_IPS=127.0.0.1
+    ENVIRONMENT=production SEED_DEMO_DATA=false FORWARDED_ALLOW_IPS=127.0.0.1 LOG_FORMAT=json
 USER app
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
-CMD ["sh", "-c", "alembic upgrade head && python -m taskmanager.seed && uvicorn taskmanager.main:app --host 0.0.0.0 --port 8000 --proxy-headers"]
+CMD ["sh", "-c", "alembic upgrade head && python -m taskmanager.seed && uvicorn taskmanager.main:app --host 0.0.0.0 --port 8000 --proxy-headers --no-access-log"]

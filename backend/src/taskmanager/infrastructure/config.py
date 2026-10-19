@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     environment: Literal["development", "test", "production"] = "development"
     log_level: str = "INFO"
+    log_format: Literal["json", "text"] = "text"  # json in containers (see Dockerfile)
 
     database_url: str = "postgresql+asyncpg://taskmanager:taskmanager@localhost:5432/taskmanager"
     redis_url: str = "redis://localhost:6379/0"

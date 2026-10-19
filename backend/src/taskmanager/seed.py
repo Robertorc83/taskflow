@@ -16,6 +16,7 @@ from taskmanager.infrastructure.clock import SystemClock
 from taskmanager.infrastructure.config import Settings, get_settings
 from taskmanager.infrastructure.db.session import create_engine, create_session_factory
 from taskmanager.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
+from taskmanager.infrastructure.logging import configure_logging
 from taskmanager.infrastructure.security.passwords import Argon2PasswordHasher
 
 logger = logging.getLogger(__name__)
@@ -166,7 +167,8 @@ async def _main() -> None:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO)
+    settings = get_settings()
+    configure_logging(settings.log_level, settings.log_format)
     asyncio.run(_main())
 
 
