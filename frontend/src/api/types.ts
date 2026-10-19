@@ -1,95 +1,39 @@
-// Hand-written mirror of the backend contract (specs/SPEC-001..004).
-// Reconcile with `npm run gen:types` once the API is running.
+// API types, derived from the backend's OpenAPI document (CR-011).
+// Never edit schema.gen.ts by hand: run `make types`. CI fails if it drifts from the backend.
 
-export type TaskStatus = "pending" | "in_progress" | "completed";
-export type TaskScope = "all" | "owned" | "assigned";
-export type TaskOrdering = "-created_at" | "created_at" | "due_date" | "-due_date";
+import type { components, operations } from "./schema.gen";
 
-export interface UserSummary {
-  id: string;
-  email: string;
-  full_name: string;
-}
+type Schemas = components["schemas"];
 
-export interface User extends UserSummary {
-  is_active: boolean;
-  created_at: string;
-}
+export type TaskStatus = Schemas["TaskStatus"];
+export type TaskScope = Schemas["TaskScope"];
+export type TaskOrdering = Schemas["TaskOrdering"];
 
-export interface Task {
-  id: string;
-  title: string;
-  description: string | null;
-  status: TaskStatus;
-  due_date: string | null;
-  is_overdue: boolean;
-  owner: UserSummary;
-  assignee: UserSummary | null;
-  created_at: string;
-  updated_at: string;
-  completed_at: string | null;
-}
-
-export interface Page<T> {
-  items: T[];
-  total: number;
-  page: number;
-  size: number;
-  pages: number;
-}
-
-export interface TokenPair {
-  access_token: string;
-  refresh_token: string;
-  token_type: "bearer";
-  expires_in: number;
-}
-
-export interface FieldError {
-  field: string;
-  message: string;
-}
-
+export type UserSummary = Schemas["UserSummaryResponse"];
+export type User = Schemas["UserResponse"];
+export type Task = Schemas["TaskResponse"];
+export type TokenPair = Schemas["TokenResponse"];
+export type FieldError = Schemas["FieldError"];
 /** RFC 9457 problem details. */
-export interface ProblemDetails {
-  type?: string;
-  title: string;
-  status: number;
-  detail?: string;
-  errors?: FieldError[];
-}
+export type ProblemDetails = Schemas["Problem"];
 
-export interface TaskListParams {
+/** The pagination envelope shared by every list endpoint. */
+export type Page<T> = Omit<Schemas["PageResponse_TaskResponse_"], "items"> & { items: T[] };
+
+type ListTasksQuery = NonNullable<operations["list_tasks_api_v1_tasks_get"]["parameters"]["query"]>;
+/** Query parameters the UI always sends (page and size are explicit). */
+export type TaskListParams = Omit<
+  ListTasksQuery,
+  "page" | "size" | "status" | "due_from" | "due_to"
+> & {
   status?: TaskStatus;
-  scope?: TaskScope;
   due_from?: string;
   due_to?: string;
-  ordering?: TaskOrdering;
   page: number;
   size: number;
-}
+};
 
-export interface CreateTaskInput {
-  title: string;
-  description?: string | null;
-  due_date?: string | null;
-  assignee_id?: string | null;
-}
-
-export interface UpdateTaskInput {
-  title?: string;
-  description?: string | null;
-  due_date?: string | null;
-  status?: Exclude<TaskStatus, "completed">;
-}
-
-export interface RegisterInput {
-  email: string;
-  full_name: string;
-  password: string;
-}
-
-export interface LoginInput {
-  email: string;
-  password: string;
-}
+export type CreateTaskInput = Schemas["TaskCreateRequest"];
+export type UpdateTaskInput = Schemas["TaskUpdateRequest"];
+export type RegisterInput = Schemas["RegisterRequest"];
+export type LoginInput = Schemas["LoginRequest"];

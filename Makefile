@@ -2,7 +2,7 @@
 BACKEND := cd backend &&
 FRONTEND := cd frontend &&
 
-.PHONY: help up down logs seed install test test-unit test-bdd lint fmt migrate migration web-test e2e
+.PHONY: help up down logs seed install types test test-unit test-bdd lint fmt migrate migration web-test e2e
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -25,6 +25,10 @@ install: ## Install backend + frontend dependencies and git hooks
 	$(BACKEND) uv sync
 	$(FRONTEND) npm ci
 	uv run --project backend pre-commit install
+
+types: ## Regenerate frontend API types from the backend's OpenAPI document
+	$(BACKEND) uv run python -m taskmanager.presentation.openapi > ../frontend/openapi.json
+	$(FRONTEND) npm run gen:types
 
 test: ## Backend: all tests with coverage gate (needs Docker for Postgres)
 	$(BACKEND) uv run pytest --cov --cov-report=term-missing

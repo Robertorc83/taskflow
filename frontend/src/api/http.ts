@@ -41,6 +41,7 @@ function buildUrl(path: string, query?: Query): string {
 
 async function toApiError(response: Response): Promise<ApiError> {
   let problem: ProblemDetails = {
+    type: "about:blank",
     title: response.statusText || "Request failed",
     status: response.status,
   };
