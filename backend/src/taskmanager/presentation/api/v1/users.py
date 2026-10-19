@@ -26,10 +26,4 @@ async def list_users(
     use_case: Annotated[ListUsers, Depends(deps.list_users)],
 ) -> PageResponse[UserResponse]:
     page = await use_case.execute(query.page_request())
-    return PageResponse[UserResponse](
-        items=[UserResponse.from_dto(u) for u in page.items],
-        total=page.total,
-        page=page.page,
-        size=page.size,
-        pages=page.pages,
-    )
+    return PageResponse[UserResponse].from_page(page, UserResponse.from_dto)

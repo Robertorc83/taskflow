@@ -10,6 +10,7 @@ from taskmanager.domain.exceptions import (
     InvalidTaskDescriptionError,
     InvalidTaskTitleError,
     TaskAlreadyCompletedError,
+    TaskNotCompletedError,
 )
 from taskmanager.domain.value_objects import TaskStatus
 
@@ -67,6 +68,10 @@ class Task:
     def is_visible_to(self, user_id: UUID) -> bool:
         return user_id in (self.owner_id, self.assignee_id)
 
+    def can_be_completed_by(self, user_id: UUID) -> bool:
+        """Owner or assignee (SPEC-004 R4). Also governs reopening (R9)."""
+        return user_id in (self.owner_id, self.assignee_id)
+
     def is_overdue(self, *, today: date) -> bool:
         return (
             self.due_date is not None
@@ -104,6 +109,11 @@ class Task:
         self.completed_at = now
         self._touch(now)
         self._events.append(TaskCompleted(task_id=self.id, completed_by=completed_by))
+
+    def reopen(self, *, now: datetime) -> None:
+        if self.status is not TaskStatus.COMPLETED:
+            raise TaskNotCompletedError("Only a completed task can be reopened")
+        self.change_status(TaskStatus.PENDING, now=now)
 
     def assign_to(self, assignee_id: UUID | None, *, assigned_by: UUID, now: datetime) -> None:
         self.assignee_id = assignee_id

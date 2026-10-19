@@ -133,3 +133,33 @@ Feature: Manage tasks
     And I am logged in as "bob@example.com"
     When I update the task with title "Bob's work"
     Then the response status should be 403
+
+  # SPEC-000 time zones, SPEC-002 R3, R8 (CR-005)
+  Scenario: "Today" is the user's local date
+    Given the current time is "2026-10-20T02:00:00Z"
+    And my time zone is "America/New_York"
+    When I create a task titled "Evening task" due on "2026-10-19"
+    Then the response status should be 201
+    And the task should not be overdue
+
+  # SPEC-000 time zones (CR-005)
+  Scenario: Without a time zone, "today" is the UTC date
+    Given the current time is "2026-10-20T02:00:00Z"
+    When I create a task titled "Evening task" due on "2026-10-19"
+    Then the response status should be 422
+
+  # SPEC-000 time zones (CR-005)
+  @validation
+  Scenario: An unknown time zone is rejected
+    Given my time zone is "Mars/Olympus_Mons"
+    When I create a task titled "Anything"
+    Then the response status should be 422
+    And the error should be about "X-Timezone"
+
+  # SPEC-002 R6 (CR-006)
+  @validation
+  Scenario: The title cannot be cleared
+    Given I have a task titled "Write report"
+    When I update the task with a null title
+    Then the response status should be 422
+    And the error should be about "title"

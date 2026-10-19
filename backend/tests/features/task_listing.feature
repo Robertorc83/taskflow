@@ -106,3 +106,9 @@ Feature: List, paginate and filter tasks
   Scenario: Reject a page size above the maximum
     When I list my tasks with page 1 and size 101
     Then the response status should be 422
+
+  # SPEC-003 R6 (CR-002)
+  @validation
+  Scenario: Reject an absurd page number
+    When I list my tasks with page 1000000 and size 10
+    Then the response status should be 422

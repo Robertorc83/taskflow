@@ -1,5 +1,9 @@
 from taskmanager.application.dto import RegisterUserCommand, TokenPair, UserDTO
-from taskmanager.application.exceptions import AuthenticationError, ConflictError
+from taskmanager.application.exceptions import (
+    AuthenticationError,
+    ConflictError,
+    InvalidInputError,
+)
 from taskmanager.application.ports import (
     Clock,
     PasswordHasher,
@@ -8,6 +12,7 @@ from taskmanager.application.ports import (
     UnitOfWork,
 )
 from taskmanager.domain.entities import User
+from taskmanager.domain.entities.user import PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH
 
 INVALID_CREDENTIALS = "Invalid email or password"
 
@@ -19,6 +24,11 @@ class RegisterUser:
         self._clock = clock
 
     async def execute(self, command: RegisterUserCommand) -> UserDTO:
+        if not PASSWORD_MIN_LENGTH <= len(command.password) <= PASSWORD_MAX_LENGTH:
+            raise InvalidInputError(
+                f"Password must be {PASSWORD_MIN_LENGTH}-{PASSWORD_MAX_LENGTH} characters",
+                field="password",
+            )
         async with self._uow as uow:
             if await uow.users.get_by_email(User.normalize_email(command.email)):
                 raise ConflictError("A user with this email already exists")

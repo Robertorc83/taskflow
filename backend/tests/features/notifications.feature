@@ -20,6 +20,7 @@ Feature: Asynchronous notifications
   Scenario: Nobody is notified when I assign a task to myself
     When I assign the task to "alice@example.com"
     Then no notification should be sent
+    And no background job should have failed
 
   # SPEC-005 R2, R3
   Scenario: The owner is notified when the assignee completes the task
@@ -33,6 +34,7 @@ Feature: Asynchronous notifications
   Scenario: Nobody is notified when I complete my own unassigned task
     When I complete the task
     Then no notification should be sent
+    And no background job should have failed
 
   # SPEC-005 R4, R7 (CR-001)
   Scenario: A broker outage does not fail the request
@@ -40,3 +42,4 @@ Feature: Asynchronous notifications
     When I assign the task to "bob@example.com"
     Then the response status should be 200
     And the response should arrive within 3 seconds
+    And the enqueue failure should be logged

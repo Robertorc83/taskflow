@@ -7,6 +7,8 @@ from uuid import UUID, uuid4
 from taskmanager.domain.exceptions import InvalidEmailError, InvalidFullNameError
 
 FULL_NAME_MAX_LENGTH = 100
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_MAX_LENGTH = 128
 # Deliberately loose: full RFC 5322 validation happens at the API boundary.
 _EMAIL_SHAPE = re.compile(r"^[^@\s]+@[^@\s]+$")
 

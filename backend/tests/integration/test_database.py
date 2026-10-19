@@ -1,5 +1,6 @@
 """Integration tests against the real, migrated PostgreSQL."""
 
+import asyncio
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 
@@ -9,15 +10,17 @@ from alembic.runtime.migration import MigrationContext
 from sqlalchemy import Connection, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from taskmanager.application.dto import PageRequest, TaskFilters
+from taskmanager.application.dto import CreateTaskCommand, PageRequest, TaskFilters
 from taskmanager.application.exceptions import ConflictError
+from taskmanager.application.use_cases.tasks import CompleteTask, CreateTask
 from taskmanager.domain.entities import User
+from taskmanager.domain.exceptions import TaskAlreadyCompletedError
 from taskmanager.domain.value_objects import TaskStatus
 from taskmanager.infrastructure.db.models import Base
 from taskmanager.infrastructure.db.session import create_engine, create_session_factory
 from taskmanager.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 from taskmanager.seed import DEMO_TASKS, DEMO_USERS, seed
-from tests.fakes import PlainTextPasswordHasher
+from tests.fakes import FixedClock, PlainTextPasswordHasher, SpyEventPublisher
 
 pytestmark = pytest.mark.integration
 
@@ -92,3 +95,27 @@ async def test_duplicate_email_race_is_reported_as_conflict(engine: AsyncEngine)
         await uow.users.add(user())
         with pytest.raises(ConflictError):
             await uow.commit()
+
+
+async def test_concurrent_completions_succeed_exactly_once(engine: AsyncEngine) -> None:
+    """CR-003: the task row is locked while completing, so racing requests can't all win."""
+    clock, publisher = FixedClock(NOW), SpyEventPublisher()
+    async with uow_for(engine) as uow:
+        owner = User.register(email="o@example.com", full_name="O", hashed_password="x", now=NOW)
+        await uow.users.add(owner)
+        await uow.commit()
+    task = await CreateTask(uow_for(engine), clock, publisher).execute(
+        owner.id, CreateTaskCommand(title="Race me")
+    )
+
+    async def complete() -> str:
+        try:
+            await CompleteTask(uow_for(engine), clock, publisher).execute(owner.id, task.id)
+        except TaskAlreadyCompletedError:
+            return "conflict"
+        return "ok"
+
+    results = await asyncio.gather(*(complete() for _ in range(8)))
+
+    assert sorted(results) == ["conflict"] * 7 + ["ok"]
+    assert [type(e).__name__ for e in publisher.published] == ["TaskCompleted"]

@@ -16,7 +16,11 @@ from taskmanager.application.exceptions import (
     NotFoundError,
     PermissionDeniedError,
 )
-from taskmanager.domain.exceptions import DomainError, TaskAlreadyCompletedError
+from taskmanager.domain.exceptions import (
+    DomainError,
+    TaskAlreadyCompletedError,
+    TaskNotCompletedError,
+)
 from taskmanager.infrastructure.rate_limit import RateLimitExceededError
 from taskmanager.presentation.schemas import FieldError, Problem
 
@@ -29,6 +33,7 @@ STATUS_BY_ERROR: list[tuple[type[Exception], HTTPStatus]] = [
     (NotFoundError, HTTPStatus.NOT_FOUND),
     (ConflictError, HTTPStatus.CONFLICT),
     (TaskAlreadyCompletedError, HTTPStatus.CONFLICT),
+    (TaskNotCompletedError, HTTPStatus.CONFLICT),
     (InvalidInputError, HTTPStatus.UNPROCESSABLE_ENTITY),
     (DomainError, HTTPStatus.UNPROCESSABLE_ENTITY),
 ]

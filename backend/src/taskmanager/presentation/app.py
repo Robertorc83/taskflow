@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
 from taskmanager.infrastructure.config import Settings, get_settings
 from taskmanager.infrastructure.container import Container
@@ -15,8 +14,10 @@ from taskmanager.presentation.errors import register_error_handlers
 DESCRIPTION = """
 Task management API: create, assign, complete and filter tasks.
 
-**Authentication:** register or use a demo account (`alice@example.com` / `Alice123!`),
+**Authentication:** register (or use a demo account when demo data is enabled — see README),
 call `POST /api/v1/auth/login`, then click **Authorize** and paste the `access_token`.
+
+**Time zones:** send `X-Timezone: <IANA zone>` so due dates and "overdue" follow your calendar.
 
 Errors follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) (`application/problem+json`).
 """
@@ -55,8 +56,7 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
 
     @app.get("/health", tags=["ops"], summary="Liveness and database connectivity")
     async def health(c: ContainerDep) -> dict[str, str]:
-        async with c.engine.connect() as connection:
-            await connection.execute(text("SELECT 1"))
+        await c.check_database()
         return {"status": "ok"}
 
     return app

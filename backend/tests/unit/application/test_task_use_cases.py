@@ -23,11 +23,16 @@ from taskmanager.application.use_cases.tasks import (
     DeleteTask,
     GetTask,
     ListTasks,
+    ReopenTask,
     UpdateTask,
 )
 from taskmanager.domain.entities import User
 from taskmanager.domain.events import TaskAssigned, TaskCompleted
-from taskmanager.domain.exceptions import DueDateInPastError, TaskAlreadyCompletedError
+from taskmanager.domain.exceptions import (
+    DueDateInPastError,
+    TaskAlreadyCompletedError,
+    TaskNotCompletedError,
+)
 from taskmanager.domain.value_objects import TaskStatus
 from tests.fakes import FixedClock, InMemoryUnitOfWork, SpyEventPublisher
 from tests.unit.application.conftest import UserFactory
@@ -304,3 +309,24 @@ class TestCompleteTask:
 
         assert reopened.status is TaskStatus.PENDING
         assert reopened.completed_at is None
+
+
+class TestReopenTask:
+    """CR-004: whoever may complete a task may undo that."""
+
+    async def test_assignee_reopens_and_completion_is_cleared(
+        self, given: Scenario, alice: User, bob: User
+    ) -> None:
+        task = await given.create(alice, assignee_id=bob.id)
+        await given.complete(bob, task)
+
+        reopened = await ReopenTask(given.uow, given.clock).execute(bob.id, task.id)
+
+        assert reopened.status is TaskStatus.PENDING
+        assert reopened.completed_at is None
+
+    async def test_reopening_an_open_task_is_a_conflict(self, given: Scenario, alice: User) -> None:
+        task = await given.create(alice)
+
+        with pytest.raises(TaskNotCompletedError):
+            await ReopenTask(given.uow, given.clock).execute(alice.id, task.id)

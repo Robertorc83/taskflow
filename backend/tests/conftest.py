@@ -1,4 +1,7 @@
-"""Shared fixtures.
+"""Database fixtures shared by acceptance and integration tests.
+
+Unit tests never request these, and nothing here imports the application at module level, so
+`pytest tests/unit` loads no framework or infrastructure code.
 
 The database is a real PostgreSQL, started once per session with testcontainers (or taken from
 TEST_DATABASE_URL, e.g. a CI service container) and migrated with Alembic — so the migrations
@@ -10,22 +13,6 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from alembic import command
-from alembic.config import Config
-from pydantic import SecretStr
-from sqlalchemy import create_engine, text
-
-from taskmanager.infrastructure.config import Settings
-
-pytest_plugins = [
-    "tests.step_defs.world",
-    "tests.step_defs.common_steps",
-    "tests.step_defs.auth_steps",
-    "tests.step_defs.task_steps",
-    "tests.step_defs.listing_steps",
-    "tests.step_defs.notification_steps",
-    "tests.step_defs.rate_limit_steps",
-]
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
@@ -48,6 +35,9 @@ def database_url() -> Iterator[str]:
 
 @pytest.fixture(scope="session")
 def migrated_database(database_url: str) -> str:
+    from alembic import command  # noqa: PLC0415
+    from alembic.config import Config  # noqa: PLC0415
+
     config = Config(str(BACKEND_DIR / "alembic.ini"))
     config.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
     config.set_main_option("sqlalchemy.url", database_url)
@@ -58,19 +48,9 @@ def migrated_database(database_url: str) -> str:
 
 @pytest.fixture
 def clean_database(migrated_database: str) -> None:
+    from sqlalchemy import create_engine, text  # noqa: PLC0415
+
     engine = create_engine(_sync_url(migrated_database))
     with engine.begin() as connection:
         connection.execute(text("TRUNCATE tasks, users CASCADE"))
     engine.dispose()
-
-
-@pytest.fixture
-def test_settings(migrated_database: str) -> Settings:
-    return Settings(
-        environment="test",
-        database_url=migrated_database,
-        jwt_secret=SecretStr("test-secret-that-is-long-enough-for-hs256"),
-        rate_limit_enabled=False,
-        rate_limit_storage_uri="memory://",
-        celery_task_always_eager=True,
-    )

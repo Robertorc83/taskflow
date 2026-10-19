@@ -1,12 +1,14 @@
 """FastAPI dependency wiring: builds use cases from the container for each request."""
 
 from typing import Annotated
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from taskmanager.application.dto import UserDTO
-from taskmanager.application.exceptions import AuthenticationError
+from taskmanager.application.exceptions import AuthenticationError, InvalidInputError
+from taskmanager.application.ports import Clock
 from taskmanager.application.use_cases.auth import (
     AuthenticateAccessToken,
     AuthenticateUser,
@@ -20,9 +22,11 @@ from taskmanager.application.use_cases.tasks import (
     DeleteTask,
     GetTask,
     ListTasks,
+    ReopenTask,
     UpdateTask,
 )
 from taskmanager.application.use_cases.users import ListUsers
+from taskmanager.infrastructure.clock import ZonedClock
 from taskmanager.infrastructure.container import Container
 
 _bearer = HTTPBearer(auto_error=False, description="Paste the `access_token` from /auth/login")
@@ -47,6 +51,29 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[UserDTO, Depends(get_current_user)]
+
+
+def request_clock(
+    container: ContainerDep,
+    x_timezone: Annotated[
+        str | None,
+        Header(
+            alias="X-Timezone",
+            description="IANA time zone (e.g. America/New_York) that defines the user's "
+            '"today" for due dates. Defaults to UTC.',
+        ),
+    ] = None,
+) -> Clock:
+    """The application clock, expressed in the caller's time zone (CR-005)."""
+    if not x_timezone:
+        return container.clock
+    try:
+        return ZonedClock(container.clock, ZoneInfo(x_timezone))
+    except (ZoneInfoNotFoundError, ValueError) as error:
+        raise InvalidInputError("Unknown time zone", field="X-Timezone") from error
+
+
+RequestClock = Annotated[Clock, Depends(request_clock)]
 
 
 # ------------------------------------------------------------------ rate limiting
@@ -83,29 +110,33 @@ def list_users(c: ContainerDep) -> ListUsers:
     return ListUsers(c.unit_of_work())
 
 
-def create_task(c: ContainerDep) -> CreateTask:
-    return CreateTask(c.unit_of_work(), c.clock, c.event_publisher)
+def create_task(c: ContainerDep, clock: RequestClock) -> CreateTask:
+    return CreateTask(c.unit_of_work(), clock, c.event_publisher)
 
 
-def get_task(c: ContainerDep) -> GetTask:
-    return GetTask(c.unit_of_work(), c.clock)
+def get_task(c: ContainerDep, clock: RequestClock) -> GetTask:
+    return GetTask(c.unit_of_work(), clock)
 
 
-def list_tasks(c: ContainerDep) -> ListTasks:
-    return ListTasks(c.unit_of_work(), c.clock)
+def list_tasks(c: ContainerDep, clock: RequestClock) -> ListTasks:
+    return ListTasks(c.unit_of_work(), clock)
 
 
-def update_task(c: ContainerDep) -> UpdateTask:
-    return UpdateTask(c.unit_of_work(), c.clock)
+def update_task(c: ContainerDep, clock: RequestClock) -> UpdateTask:
+    return UpdateTask(c.unit_of_work(), clock)
 
 
-def delete_task(c: ContainerDep) -> DeleteTask:
-    return DeleteTask(c.unit_of_work(), c.clock)
+def delete_task(c: ContainerDep, clock: RequestClock) -> DeleteTask:
+    return DeleteTask(c.unit_of_work(), clock)
 
 
-def assign_task(c: ContainerDep) -> AssignTask:
-    return AssignTask(c.unit_of_work(), c.clock, c.event_publisher)
+def assign_task(c: ContainerDep, clock: RequestClock) -> AssignTask:
+    return AssignTask(c.unit_of_work(), clock, c.event_publisher)
 
 
-def complete_task(c: ContainerDep) -> CompleteTask:
-    return CompleteTask(c.unit_of_work(), c.clock, c.event_publisher)
+def complete_task(c: ContainerDep, clock: RequestClock) -> CompleteTask:
+    return CompleteTask(c.unit_of_work(), clock, c.event_publisher)
+
+
+def reopen_task(c: ContainerDep, clock: RequestClock) -> ReopenTask:
+    return ReopenTask(c.unit_of_work(), clock)

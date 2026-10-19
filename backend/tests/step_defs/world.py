@@ -38,6 +38,7 @@ class World:
     current_email: str | None = None
     responses: list[httpx.Response] = field(default_factory=list)
     task_id: str | None = None
+    timezone: str | None = None
 
     @property
     def container(self) -> Container:
@@ -63,6 +64,8 @@ class World:
         **kwargs: Any,
     ) -> httpx.Response:
         headers = dict(kwargs.pop("headers", {}))
+        if self.timezone:
+            headers["X-Timezone"] = self.timezone
         email = as_user or self.current_email
         if not anonymous and email is not None:
             headers["Authorization"] = f"Bearer {self.access_tokens[email]}"

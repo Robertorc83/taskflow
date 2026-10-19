@@ -1,12 +1,14 @@
 """HTTP request/response models. They validate *shape*; business rules live in the domain."""
 
-from datetime import date, datetime
-from typing import Any, Literal, Self
+from collections.abc import Callable
+from datetime import UTC, date, datetime
+from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from taskmanager.application.dto import (
+    Page,
     PageRequest,
     TaskDTO,
     TaskFilters,
@@ -14,11 +16,20 @@ from taskmanager.application.dto import (
     TaskScope,
     TokenPair,
     UserDTO,
-    UserSummary,
 )
 from taskmanager.domain.entities.task import DESCRIPTION_MAX_LENGTH, TITLE_MAX_LENGTH
-from taskmanager.domain.entities.user import FULL_NAME_MAX_LENGTH
+from taskmanager.domain.entities.user import (
+    FULL_NAME_MAX_LENGTH,
+    PASSWORD_MAX_LENGTH,
+    PASSWORD_MIN_LENGTH,
+)
 from taskmanager.domain.value_objects import TaskStatus
+
+MAX_PAGE = 10_000
+"""Deep offsets are both useless to humans and an overflow/DoS vector (CR-002)."""
+
+UtcDateTime = Annotated[datetime, AfterValidator(lambda moment: moment.astimezone(UTC))]
+"""Responses always carry UTC, whatever zone the request's clock used (CR-005)."""
 
 # ------------------------------------------------------------------ errors
 
@@ -44,7 +55,7 @@ class Problem(BaseModel):
 class RegisterRequest(BaseModel):
     email: EmailStr
     full_name: str = Field(min_length=1, max_length=FULL_NAME_MAX_LENGTH)
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -57,7 +68,7 @@ class RegisterRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     email: str = Field(max_length=320)
-    password: str = Field(max_length=128)
+    password: str = Field(max_length=PASSWORD_MAX_LENGTH)
 
     model_config = ConfigDict(
         json_schema_extra={"examples": [{"email": "alice@example.com", "password": "Alice123!"}]}
@@ -90,7 +101,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     is_active: bool
-    created_at: datetime
+    created_at: UtcDateTime
 
     @classmethod
     def from_dto(cls, user: UserDTO) -> Self:
@@ -133,12 +144,13 @@ class TaskUpdateRequest(BaseModel):
         default=None, description="Use POST /tasks/{id}/complete to complete a task."
     )
 
-    @model_validator(mode="after")
-    def _reject_null_for_required_fields(self) -> Self:
-        for name in ("title", "status"):
-            if name in self.model_fields_set and getattr(self, name) is None:
-                raise ValueError(f"{name} cannot be null")
-        return self
+    @field_validator("title", "status")
+    @classmethod
+    def _reject_explicit_null(cls, value: object) -> object:
+        # Runs only for fields present in the body, so the error is reported on that field.
+        if value is None:
+            raise ValueError("cannot be null")
+        return value
 
     def changes(self) -> dict[str, Any]:
         return {name: getattr(self, name) for name in self.model_fields_set}
@@ -159,16 +171,24 @@ class TaskResponse(BaseModel):
     is_overdue: bool
     owner: UserSummaryResponse
     assignee: UserSummaryResponse | None
-    created_at: datetime
-    updated_at: datetime
-    completed_at: datetime | None
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
+    completed_at: UtcDateTime | None
 
     @classmethod
     def from_dto(cls, task: TaskDTO) -> Self:
         return cls.model_validate(task)
 
 
-class TaskListQuery(BaseModel):
+class PaginationQuery(BaseModel):
+    page: int = Field(default=1, ge=1, le=MAX_PAGE)
+    size: int = Field(default=20, ge=1, le=PageRequest.MAX_SIZE)
+
+    def page_request(self) -> PageRequest:
+        return PageRequest(page=self.page, size=self.size)
+
+
+class TaskListQuery(PaginationQuery):
     model_config = ConfigDict(extra="forbid")
 
     scope: TaskScope = TaskScope.ALL
@@ -176,8 +196,6 @@ class TaskListQuery(BaseModel):
     due_from: date | None = None
     due_to: date | None = None
     ordering: TaskOrdering = TaskOrdering.CREATED_AT_DESC
-    page: int = Field(default=1, ge=1)
-    size: int = Field(default=20, ge=1, le=PageRequest.MAX_SIZE)
 
     def filters(self) -> TaskFilters:
         return TaskFilters(
@@ -188,17 +206,6 @@ class TaskListQuery(BaseModel):
             ordering=self.ordering,
         )
 
-    def page_request(self) -> PageRequest:
-        return PageRequest(page=self.page, size=self.size)
-
-
-class PaginationQuery(BaseModel):
-    page: int = Field(default=1, ge=1)
-    size: int = Field(default=20, ge=1, le=PageRequest.MAX_SIZE)
-
-    def page_request(self) -> PageRequest:
-        return PageRequest(page=self.page, size=self.size)
-
 
 class PageResponse[T](BaseModel):
     items: list[T]
@@ -206,6 +213,16 @@ class PageResponse[T](BaseModel):
     page: int
     size: int
     pages: int
+
+    @classmethod
+    def from_page[D](cls, page: Page[D], to_item: Callable[[D], T]) -> Self:
+        return cls(
+            items=[to_item(item) for item in page.items],
+            total=page.total,
+            page=page.page,
+            size=page.size,
+            pages=page.pages,
+        )
 
 
 __all__ = [
@@ -223,6 +240,5 @@ __all__ = [
     "TaskUpdateRequest",
     "TokenResponse",
     "UserResponse",
-    "UserSummary",
     "UserSummaryResponse",
 ]

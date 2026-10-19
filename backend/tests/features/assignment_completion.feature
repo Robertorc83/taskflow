@@ -82,8 +82,32 @@ Feature: Assign and complete tasks
     When I complete the task
     Then the response status should be 404
 
+  # SPEC-004 R9 (CR-004)
+  Scenario: The assignee reopens a completed task
+    Given the task is assigned to "bob@example.com"
+    And the task is completed
+    And I am logged in as "bob@example.com"
+    When I reopen the task
+    Then the response status should be 200
+    And the task should have status "pending"
+    And the task should have no completion time
+
+  # SPEC-004 R9 (CR-004)
+  @validation
+  Scenario: Reopening a task that is not completed is a conflict
+    When I reopen the task
+    Then the response status should be 409
+
+  # SPEC-004 R9 (CR-004)
+  @authorization
+  Scenario: A stranger cannot reopen a task
+    Given the task is completed
+    And I am logged in as "mallory@example.com"
+    When I reopen the task
+    Then the response status should be 404
+
   # SPEC-004 R5, SPEC-002 R5
-  Scenario: Reopen a completed task
+  Scenario: The owner reopens a task through an update
     Given the task is completed
     When I update the task with status "pending"
     Then the response status should be 200

@@ -118,7 +118,7 @@ class InMemoryTaskRepository:
     async def save(self, task: Task) -> None:
         self.rows[task.id] = replace(task)
 
-    async def get(self, task_id: UUID) -> Task | None:
+    async def get(self, task_id: UUID, *, for_update: bool = False) -> Task | None:
         task = self.rows.get(task_id)
         return replace(task) if task else None
 

@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     celery_task_always_eager: bool = False
     event_publish_timeout_seconds: float = 2.0
 
+    seed_demo_data: bool = False  # demo accounts are never created unless asked for
+
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
     @property

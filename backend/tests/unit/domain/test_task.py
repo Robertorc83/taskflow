@@ -11,6 +11,7 @@ from taskmanager.domain.exceptions import (
     InvalidTaskDescriptionError,
     InvalidTaskTitleError,
     TaskAlreadyCompletedError,
+    TaskNotCompletedError,
 )
 from taskmanager.domain.value_objects import TaskStatus
 
@@ -202,3 +203,26 @@ class TestOverdue:
 
     def test_a_task_without_due_date_is_never_overdue(self) -> None:
         assert not make_task().is_overdue(today=TODAY + timedelta(days=30))
+
+
+class TestReopening:
+    def test_reopen_clears_completion(self) -> None:
+        task = make_task()
+        task.complete(completed_by=OWNER, now=LATER)
+
+        task.reopen(now=LATER)
+
+        assert (task.status, task.completed_at) == (TaskStatus.PENDING, None)
+
+    def test_only_completed_tasks_can_be_reopened(self) -> None:
+        with pytest.raises(TaskNotCompletedError):
+            make_task().reopen(now=LATER)
+
+
+def test_only_owner_and_assignee_can_complete() -> None:
+    task, assignee = make_task(), uuid4()
+    task.assign_to(assignee, assigned_by=OWNER, now=LATER)
+
+    assert task.can_be_completed_by(OWNER)
+    assert task.can_be_completed_by(assignee)
+    assert not task.can_be_completed_by(uuid4())

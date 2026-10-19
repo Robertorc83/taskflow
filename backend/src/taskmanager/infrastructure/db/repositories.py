@@ -115,8 +115,8 @@ class SqlAlchemyTaskRepository:
     async def save(self, task: Task) -> None:
         _task_to_row(task, await self._session.get(TaskModel, task.id))
 
-    async def get(self, task_id: UUID) -> Task | None:
-        row = await self._session.get(TaskModel, task_id)
+    async def get(self, task_id: UUID, *, for_update: bool = False) -> Task | None:
+        row = await self._session.get(TaskModel, task_id, with_for_update=for_update)
         return _task_to_entity(row) if row else None
 
     async def delete(self, task: Task) -> None:

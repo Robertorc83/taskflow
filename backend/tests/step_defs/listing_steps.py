@@ -2,9 +2,8 @@ from typing import Any
 
 from pytest_bdd import parsers, then, when
 
+from tests.step_defs.patterns import QUOTED as Q
 from tests.step_defs.world import World
-
-Q = r'"(?P<{}>[^"]*)"'
 
 
 def _list(world: World, **params: Any) -> None:

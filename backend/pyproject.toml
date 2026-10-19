@@ -116,10 +116,32 @@ layers = [
 name = "Domain is pure (no frameworks)"
 type = "forbidden"
 source_modules = ["taskmanager.domain"]
-forbidden_modules = ["fastapi", "pydantic", "sqlalchemy", "celery", "jwt", "pwdlib", "limits", "redis"]
+forbidden_modules = ["fastapi", "pydantic", "sqlalchemy", "celery", "jwt", "pwdlib", "limits", "redis", "starlette", "pydantic_settings", "argon2", "kombu", "asyncpg"]
 
 [[tool.importlinter.contracts]]
 name = "Application is framework-free"
 type = "forbidden"
 source_modules = ["taskmanager.application"]
-forbidden_modules = ["fastapi", "pydantic", "sqlalchemy", "celery", "jwt", "pwdlib", "limits", "redis"]
+forbidden_modules = ["fastapi", "pydantic", "sqlalchemy", "celery", "jwt", "pwdlib", "limits", "redis", "starlette", "pydantic_settings", "argon2", "kombu", "asyncpg"]
+
+[[tool.importlinter.contracts]]
+name = "Presentation never touches persistence, crypto or the job queue directly"
+type = "forbidden"
+source_modules = ["taskmanager.presentation"]
+forbidden_modules = [
+    "sqlalchemy", "celery", "jwt", "pwdlib", "redis",
+    "taskmanager.infrastructure.db", "taskmanager.infrastructure.security",
+    "taskmanager.infrastructure.tasks",
+]
+allow_indirect_imports = true  # the container (composition root) may use them
+
+[[tool.importlinter.contracts]]
+name = "The API does not depend on the worker's code"
+type = "forbidden"
+source_modules = ["taskmanager.presentation", "taskmanager.infrastructure.container"]
+forbidden_modules = [
+    "taskmanager.infrastructure.tasks.jobs",
+    "taskmanager.infrastructure.tasks.runtime",
+    "taskmanager.infrastructure.tasks.worker",
+    "taskmanager.application.use_cases.notifications",
+]

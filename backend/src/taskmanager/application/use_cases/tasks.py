@@ -38,11 +38,18 @@ class _TaskUseCase:
     def _today(self) -> date:
         return self._clock.now().date()
 
-    async def _visible_task(self, uow: UnitOfWork, task_id: UUID, actor_id: UUID) -> Task:
-        task = await uow.tasks.get(task_id)
+    async def _visible_task(
+        self, uow: UnitOfWork, task_id: UUID, actor_id: UUID, *, for_update: bool = False
+    ) -> Task:
+        task = await uow.tasks.get(task_id, for_update=for_update)
         if task is None or not task.is_visible_to(actor_id):
             raise NotFoundError("Task not found")
         return task
+
+    @staticmethod
+    def _ensure_can_complete(task: Task, actor_id: UUID) -> None:
+        if not task.can_be_completed_by(actor_id):
+            raise PermissionDeniedError("Only the owner or assignee can change completion")
 
     @staticmethod
     def _ensure_owner(task: Task, actor_id: UUID, action: str) -> None:
@@ -127,7 +134,7 @@ class UpdateTask(_TaskUseCase):
     async def execute(self, actor_id: UUID, task_id: UUID, command: UpdateTaskCommand) -> TaskDTO:
         now = self._clock.now()
         async with self._uow as uow:
-            task = await self._visible_task(uow, task_id, actor_id)
+            task = await self._visible_task(uow, task_id, actor_id, for_update=True)
             self._ensure_owner(task, actor_id, "edit")
             if command.title is not UNSET:
                 task.rename(command.title, now=now)
@@ -146,7 +153,7 @@ class UpdateTask(_TaskUseCase):
 class DeleteTask(_TaskUseCase):
     async def execute(self, actor_id: UUID, task_id: UUID) -> None:
         async with self._uow as uow:
-            task = await self._visible_task(uow, task_id, actor_id)
+            task = await self._visible_task(uow, task_id, actor_id, for_update=True)
             self._ensure_owner(task, actor_id, "delete")
             await uow.tasks.delete(task)
             await uow.commit()
@@ -155,7 +162,7 @@ class DeleteTask(_TaskUseCase):
 class AssignTask(_PublishingTaskUseCase):
     async def execute(self, actor_id: UUID, task_id: UUID, assignee_id: UUID | None) -> TaskDTO:
         async with self._uow as uow:
-            task = await self._visible_task(uow, task_id, actor_id)
+            task = await self._visible_task(uow, task_id, actor_id, for_update=True)
             self._ensure_owner(task, actor_id, "assign")
             if assignee_id is not None:
                 await self._ensure_assignable(uow, assignee_id)
@@ -168,14 +175,33 @@ class AssignTask(_PublishingTaskUseCase):
 
 
 class CompleteTask(_PublishingTaskUseCase):
-    """Owner or assignee may complete (SPEC-004 R4) — visibility is exactly that set."""
+    """Owner or assignee may complete (SPEC-004 R4).
+
+    The row is locked (CR-003): concurrent completions serialize, so exactly one succeeds and
+    exactly one TaskCompleted event is published.
+    """
 
     async def execute(self, actor_id: UUID, task_id: UUID) -> TaskDTO:
         async with self._uow as uow:
-            task = await self._visible_task(uow, task_id, actor_id)
+            task = await self._visible_task(uow, task_id, actor_id, for_update=True)
+            self._ensure_can_complete(task, actor_id)
             task.complete(completed_by=actor_id, now=self._clock.now())
             await uow.tasks.save(task)
             result = await self._to_dto(uow, task)
             await uow.commit()
         await self._publish_events_of(task)
+        return result
+
+
+class ReopenTask(_TaskUseCase):
+    """Undo a completion (SPEC-004 R9, CR-004): allowed for whoever may complete the task."""
+
+    async def execute(self, actor_id: UUID, task_id: UUID) -> TaskDTO:
+        async with self._uow as uow:
+            task = await self._visible_task(uow, task_id, actor_id, for_update=True)
+            self._ensure_can_complete(task, actor_id)
+            task.reopen(now=self._clock.now())
+            await uow.tasks.save(task)
+            result = await self._to_dto(uow, task)
+            await uow.commit()
         return result

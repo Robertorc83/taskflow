@@ -1,11 +1,11 @@
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
 from pytest_bdd import given, parsers, then, when
 
+from tests.step_defs.patterns import QUOTED as Q
 from tests.step_defs.world import World
-
-Q = r'"(?P<{}>[^"]*)"'  # a quoted step argument
 
 
 def _create_task(world: World, as_user: str | None = None, **payload: Any) -> dict[str, Any]:
@@ -245,3 +245,31 @@ def event_published_for(world: World, event: str, email: str) -> None:
 @then(parsers.re(f"a {Q.format('event')} event should be published"))
 def event_published(world: World, event: str) -> None:
     assert event in {type(e).__name__ for e in world.events.published}, world.events.published
+
+
+# ------------------------------------------------------------------------------ CR-004 / CR-005
+
+
+@given(parsers.re(f"the current time is {Q.format('moment')}"))
+def current_time_is(world: World, moment: str) -> None:
+    world.clock.advance_to(datetime.fromisoformat(moment))
+
+
+@given(parsers.re(f"my time zone is {Q.format('zone')}"))
+def my_time_zone_is(world: World, zone: str) -> None:
+    world.timezone = zone
+
+
+@when("I reopen the task")
+def reopen_task(world: World) -> None:
+    world.request("POST", _task_path(world, "/reopen"))
+
+
+@when("I update the task with a null title")
+def update_null_title(world: World) -> None:
+    world.request("PATCH", _task_path(world), json={"title": None})
+
+
+@then(parsers.re(f"the error should be about {Q.format('field')}"))
+def error_is_about(world: World, field: str) -> None:
+    assert field in {error["field"] for error in world.body.get("errors", [])}, world.body

@@ -1,7 +1,11 @@
 name: taskmanager
 
+# Local demo stack. It deliberately runs in `development` mode with demo data and a dev JWT secret;
+# the image itself defaults to production (fail closed). Never deploy this file as-is.
+
 x-backend-env: &backend-env
   ENVIRONMENT: ${ENVIRONMENT:-development}
+  SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
   DATABASE_URL: postgresql+asyncpg://taskmanager:taskmanager@db:5432/taskmanager
   REDIS_URL: redis://redis:6379/0
   JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-in-production!!}
@@ -20,7 +24,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      # Loopback only, on 55432 so it can't clash with a native Postgres (local dev, see README).
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-55432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U taskmanager"]
       interval: 5s
@@ -29,6 +34,8 @@ services:
 
   redis:
     image: redis:7-alpine
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-6380}:6379"  # loopback only, for local dev
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -37,9 +44,12 @@ services:
 
   api:
     build: ./backend
-    environment: *backend-env
+    environment:
+      <<: *backend-env
+      # Only nginx may set X-Forwarded-For; anyone else is keyed by their real address.
+      FORWARDED_ALLOW_IPS: 172.28.0.10
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"  # Swagger for local use; the app goes through nginx
     depends_on:
       db:
         condition: service_healthy
@@ -57,12 +67,24 @@ services:
         condition: service_healthy  # migrations have run
 
   web:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_DEMO_MODE: "true"  # show demo credentials on the login page
+    networks:
+      default:
+        ipv4_address: 172.28.0.10
     ports:
       - "3000:80"
     depends_on:
       api:
         condition: service_healthy
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
 
 volumes:
   pgdata:

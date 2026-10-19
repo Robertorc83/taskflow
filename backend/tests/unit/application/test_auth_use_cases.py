@@ -3,7 +3,11 @@ from uuid import uuid4
 import pytest
 
 from taskmanager.application.dto import PageRequest, RegisterUserCommand
-from taskmanager.application.exceptions import AuthenticationError, ConflictError
+from taskmanager.application.exceptions import (
+    AuthenticationError,
+    ConflictError,
+    InvalidInputError,
+)
 from taskmanager.application.use_cases.auth import (
     AuthenticateAccessToken,
     AuthenticateUser,
@@ -142,3 +146,16 @@ async def test_list_users_is_paginated(uow: InMemoryUnitOfWork, make_user: UserF
 
     assert [u.email for u in page.items] == ["carol@example.com"]
     assert (page.total, page.pages) == (3, 2)
+
+
+@pytest.mark.parametrize("password", ["short7!", "x" * 129])
+async def test_password_length_is_a_use_case_rule(
+    uow: InMemoryUnitOfWork, hasher: PlainTextPasswordHasher, clock: FixedClock, password: str
+) -> None:
+    """CR-006: SPEC-001 R2 holds for every caller, not only HTTP."""
+    with pytest.raises(InvalidInputError) as error:
+        await RegisterUser(uow, hasher, clock).execute(
+            RegisterUserCommand("carol@example.com", "Carol", password)
+        )
+    assert error.value.field == "password"
+    assert uow.users.rows == {}

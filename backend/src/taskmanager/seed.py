@@ -13,7 +13,7 @@ from taskmanager.application.ports import PasswordHasher, UnitOfWork
 from taskmanager.domain.entities import Task, User
 from taskmanager.domain.value_objects import TaskStatus
 from taskmanager.infrastructure.clock import SystemClock
-from taskmanager.infrastructure.config import get_settings
+from taskmanager.infrastructure.config import Settings, get_settings
 from taskmanager.infrastructure.db.session import create_engine, create_session_factory
 from taskmanager.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 from taskmanager.infrastructure.security.passwords import Argon2PasswordHasher
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 DEMO_USERS = [
     ("alice@example.com", "Alice Smith", "Alice123!"),
-    ("bob@example.com", "Bob Jones", "Bob123!"),
+    ("bob@example.com", "Bob Jones", "Bob12345!"),
     ("carol@example.com", "Carol Diaz", "Carol123!"),
 ]
 
@@ -146,8 +146,17 @@ async def seed(uow: UnitOfWork, hasher: PasswordHasher, now: datetime) -> bool:
     return True
 
 
+def should_seed(settings: Settings) -> bool:
+    """Demo accounts have published passwords: never create them in production (CR-002)."""
+    return settings.seed_demo_data and settings.environment != "production"
+
+
 async def _main() -> None:
-    engine = create_engine(get_settings().database_url, pooled=False)
+    settings = get_settings()
+    if not should_seed(settings):
+        logger.info("Demo data disabled (SEED_DEMO_DATA=false or production) — skipped")
+        return
+    engine = create_engine(settings.database_url, pooled=False)
     try:
         uow = SqlAlchemyUnitOfWork(create_session_factory(engine))
         seeded = await seed(uow, Argon2PasswordHasher(), SystemClock().now())

@@ -27,6 +27,10 @@ class TaskAlreadyCompletedError(DomainError):
     pass
 
 
+class TaskNotCompletedError(DomainError):
+    pass
+
+
 class InvalidEmailError(DomainError):
     pass
 

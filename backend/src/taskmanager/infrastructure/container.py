@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from taskmanager.application.ports import (
@@ -19,7 +20,7 @@ from taskmanager.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 from taskmanager.infrastructure.rate_limit import RateLimiter
 from taskmanager.infrastructure.security.passwords import Argon2PasswordHasher
 from taskmanager.infrastructure.security.tokens import JwtTokenService
-from taskmanager.infrastructure.tasks.celery_app import configure_celery
+from taskmanager.infrastructure.tasks.celery_app import create_celery_app
 from taskmanager.infrastructure.tasks.publisher import CeleryEventPublisher
 
 
@@ -53,7 +54,7 @@ class Container:
                 refresh_ttl=timedelta(seconds=settings.refresh_token_ttl_seconds),
             ),
             event_publisher=CeleryEventPublisher(
-                configure_celery(settings), timeout_seconds=settings.event_publish_timeout_seconds
+                create_celery_app(settings), timeout_seconds=settings.event_publish_timeout_seconds
             ),
             rate_limiter=RateLimiter(
                 settings.rate_limit_storage,
@@ -65,6 +66,10 @@ class Container:
 
     def unit_of_work(self) -> UnitOfWork:
         return SqlAlchemyUnitOfWork(self.session_factory)
+
+    async def check_database(self) -> None:
+        async with self.engine.connect() as connection:
+            await connection.execute(text("SELECT 1"))
 
     async def aclose(self) -> None:
         await self.engine.dispose()

@@ -11,6 +11,7 @@ from taskmanager.application.use_cases.tasks import (
     DeleteTask,
     GetTask,
     ListTasks,
+    ReopenTask,
     UpdateTask,
 )
 from taskmanager.presentation import dependencies as deps
@@ -39,13 +40,7 @@ async def list_tasks(
     use_case: Annotated[ListTasks, Depends(deps.list_tasks)],
 ) -> PageResponse[TaskResponse]:
     page = await use_case.execute(user.id, query.filters(), query.page_request())
-    return PageResponse[TaskResponse](
-        items=[TaskResponse.from_dto(task) for task in page.items],
-        total=page.total,
-        page=page.page,
-        size=page.size,
-        pages=page.pages,
-    )
+    return PageResponse[TaskResponse].from_page(page, TaskResponse.from_dto)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, summary="Create a task")
@@ -120,5 +115,18 @@ async def complete_task(
     user: deps.CurrentUser,
     task_id: UUID,
     use_case: Annotated[CompleteTask, Depends(deps.complete_task)],
+) -> TaskResponse:
+    return TaskResponse.from_dto(await use_case.execute(user.id, task_id))
+
+
+@router.post(
+    "/{task_id}/reopen",
+    responses=error_responses(403, 404, 409),
+    summary="Reopen a completed task (owner or assignee)",
+)
+async def reopen_task(
+    user: deps.CurrentUser,
+    task_id: UUID,
+    use_case: Annotated[ReopenTask, Depends(deps.reopen_task)],
 ) -> TaskResponse:
     return TaskResponse.from_dto(await use_case.execute(user.id, task_id))

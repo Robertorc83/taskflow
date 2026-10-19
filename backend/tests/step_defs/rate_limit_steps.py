@@ -1,9 +1,9 @@
 from pytest_bdd import given, parsers, then, when
 
 from taskmanager.infrastructure.rate_limit import RateLimiter
+from tests.step_defs.patterns import QUOTED as Q
 from tests.step_defs.world import World
 
-Q = r'"(?P<{}>[^"]*)"'
 GENEROUS = "1000/minute"
 
 
