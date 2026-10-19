@@ -191,6 +191,18 @@ export const handlers = [
     return HttpResponse.json(task);
   }),
 
+  // Owner or assignee may reopen; reopening an open task is a conflict (mirrors the backend).
+  http.post(`${API}/tasks/:id/reopen`, async ({ request, params }) => {
+    await record(request);
+    const user = currentUser(request);
+    if (!user) return unauthorized();
+    const task = db.tasks.find((t) => t.id === params.id);
+    if (!task || !visibleTo(user, task)) return problem(404, "Task not found");
+    if (task.status !== "completed") return problem(409, "Task is not completed");
+    Object.assign(task, { status: "pending", completed_at: null });
+    return HttpResponse.json(task);
+  }),
+
   http.delete(`${API}/tasks/:id`, async ({ request, params }) => {
     await record(request);
     const user = currentUser(request);

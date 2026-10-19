@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { http } from "msw";
 
-import { db } from "@/test/db";
+import { ALICE, BOB, db, makeTask } from "@/test/db";
 import { problem } from "@/test/handlers";
 import { renderApp } from "@/test/render";
 import { server } from "@/test/server";
@@ -149,7 +149,74 @@ describe("Given I am on the task list", () => {
     await user.click(within(list).getByRole("button", { name: "Reopen Deploy release" }));
 
     expect(await screen.findByText("Task reopened")).toBeInTheDocument();
-    expect(db.requests.at(-2)).toMatchObject({ method: "PATCH", body: { status: "pending" } });
+    expect(db.requests.some((r) => r.method === "POST" && r.path.endsWith("/reopen"))).toBe(true);
+    expect(db.requests.some((r) => r.method === "PATCH")).toBe(false);
+  });
+
+  it("when I reopen a completed task that was assigned to me, then it goes back to pending (F8, F12)", async () => {
+    db.tasks.push(
+      makeTask({
+        title: "Bob's finished errand",
+        status: "completed",
+        completed_at: "2026-10-03T10:00:00Z",
+        owner: { id: BOB.id, email: BOB.email, full_name: BOB.full_name },
+        assignee: { id: ALICE.id, email: ALICE.email, full_name: ALICE.full_name },
+      }),
+    );
+    const { user } = renderApp("/tasks");
+    const list = await taskList();
+
+    await user.click(within(list).getByRole("button", { name: "Reopen Bob's finished errand" }));
+
+    expect(await screen.findByText("Task reopened")).toBeInTheDocument();
+    const card = within(await taskList()).getByRole("article", { name: "Bob's finished errand" });
+    await waitFor(() => expect(within(card).getByText("Pending")).toBeInTheDocument());
+  });
+
+  it("when reopening fails, then the change is rolled back and I see why (F8)", async () => {
+    server.use(
+      http.post("*/api/v1/tasks/:id/reopen", () =>
+        problem(409, "Conflict", { detail: "Task is not completed" }),
+      ),
+    );
+    const { user } = renderApp("/tasks");
+    const list = await taskList();
+
+    await user.click(within(list).getByRole("button", { name: "Reopen Deploy release" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Could not reopen the task: Task is not completed",
+    );
+    const card = within(await taskList()).getByRole("article", { name: "Deploy release" });
+    expect(within(card).getByText("Completed")).toBeInTheDocument();
+  });
+
+  it("when the page in the URL is past the end, then I am taken to the last page instead of an empty list (F7)", async () => {
+    const { router } = renderApp("/tasks?page=4");
+
+    const list = await taskList();
+
+    expect(titles(list)).toContain("Write report");
+    expect(screen.queryByText("No tasks yet")).not.toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.search).not.toContain("page=4"));
+  });
+
+  it("when I delete the only task on the last page, then I land on the previous page (F7, F9)", async () => {
+    for (let i = 0; i < 6; i += 1) db.tasks.push(makeTask({ title: `Extra ${i}` }));
+    const { user } = renderApp("/tasks?page=2");
+    const list = await taskList();
+    const [lastTitle] = titles(list);
+    expect(titles(list)).toHaveLength(1);
+
+    await user.click(within(list).getByRole("button", { name: `Delete ${lastTitle ?? ""}` }));
+    await user.click(
+      within(screen.getByRole("dialog", { name: "Delete task?" })).getByRole("button", {
+        name: "Delete task",
+      }),
+    );
+
+    await waitFor(async () => expect(titles(await taskList())).toHaveLength(10));
+    expect(screen.queryByText("No tasks yet")).not.toBeInTheDocument();
   });
 
   it("when I delete a task and confirm, then it disappears (F9)", async () => {

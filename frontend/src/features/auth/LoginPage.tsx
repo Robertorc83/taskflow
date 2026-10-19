@@ -14,9 +14,14 @@ import { loginSchema, type LoginValues } from "./schemas";
 
 export const DEMO_ACCOUNTS = [
   { email: "alice@example.com", password: "Alice123!" },
-  { email: "bob@example.com", password: "Bob123!" },
+  { email: "bob@example.com", password: "Bob12345!" },
   { email: "carol@example.com", password: "Carol123!" },
 ] as const;
+
+/** Demo credentials are a reviewer convenience: shown in dev, or when a build opts in explicitly. */
+function demoModeEnabled(): boolean {
+  return import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === "true";
+}
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -90,31 +95,33 @@ export function LoginPage() {
         </Button>
       </form>
 
-      <section aria-labelledby="demo-accounts" className="mt-6 border-t border-slate-100 pt-5">
-        <h2
-          id="demo-accounts"
-          className="text-xs font-semibold uppercase tracking-wide text-slate-500"
-        >
-          Demo accounts
-        </h2>
-        <ul className="mt-2 space-y-1">
-          {DEMO_ACCOUNTS.map((account) => (
-            <li key={account.email}>
-              <button
-                type="button"
-                className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm text-slate-600 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
-                onClick={() => {
-                  setValue("email", account.email, { shouldValidate: true });
-                  setValue("password", account.password, { shouldValidate: true });
-                }}
-              >
-                <span>{account.email}</span>
-                <code className="text-xs text-slate-400">{account.password}</code>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {demoModeEnabled() && (
+        <section aria-labelledby="demo-accounts" className="mt-6 border-t border-slate-100 pt-5">
+          <h2
+            id="demo-accounts"
+            className="text-xs font-semibold uppercase tracking-wide text-slate-500"
+          >
+            Demo accounts
+          </h2>
+          <ul className="mt-2 space-y-1">
+            {DEMO_ACCOUNTS.map((account) => (
+              <li key={account.email}>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm text-slate-600 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
+                  onClick={() => {
+                    setValue("email", account.email, { shouldValidate: true });
+                    setValue("password", account.password, { shouldValidate: true });
+                  }}
+                >
+                  <span>{account.email}</span>
+                  <code className="text-xs text-slate-400">{account.password}</code>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </AuthLayout>
   );
 }

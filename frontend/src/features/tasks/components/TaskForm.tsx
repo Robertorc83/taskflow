@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { InputField, SelectField, TextareaField } from "@/components/ui/Field";
 import { errorMessage, fieldErrors } from "@/lib/errors";
 import { todayIso } from "@/lib/dates";
+import { LIMITS } from "@/lib/limits";
 
 import { taskFormSchema, type TaskFormValues } from "../schemas";
 
@@ -73,7 +74,7 @@ export function TaskForm({ task, users, onSubmit, onCancel }: TaskFormProps) {
       <InputField
         label="Title"
         placeholder="What needs to be done?"
-        maxLength={200}
+        maxLength={LIMITS.taskTitleMax}
         data-autofocus
         error={errors.title?.message}
         {...register("title")}
@@ -81,7 +82,7 @@ export function TaskForm({ task, users, onSubmit, onCancel }: TaskFormProps) {
       <TextareaField
         label="Description"
         placeholder="Add more detail (optional)"
-        maxLength={2000}
+        maxLength={LIMITS.taskDescriptionMax}
         error={errors.description?.message}
         {...register("description")}
       />

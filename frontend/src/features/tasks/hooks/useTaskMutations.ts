@@ -4,13 +4,14 @@ import { tasksApi } from "@/api/tasks";
 import type { CreateTaskInput, Page, Task, UpdateTaskInput } from "@/api/types";
 import { useToast } from "@/components/ui/toastContext";
 import { errorMessage } from "@/lib/errors";
-import { queryKeys } from "@/lib/queryKeys";
+
+import { taskQueryKeys } from "../queryKeys";
 
 export function useCreateTask() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateTaskInput) => tasksApi.create(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.tasks }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: taskQueryKeys.all }),
   });
 }
 
@@ -35,10 +36,10 @@ export function useUpdateTask() {
       }
       return task;
     },
-    onSuccess: (task) => {
-      queryClient.setQueryData(queryKeys.task(task.id), task);
-      return queryClient.invalidateQueries({ queryKey: queryKeys.taskLists });
-    },
+    onSuccess: (task) => queryClient.setQueryData(taskQueryKeys.detail(task.id), task),
+    // Settled, not success: if the PATCH was saved but the assignment then failed, the server
+    // state still changed and every cached copy of the task must be refetched.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: taskQueryKeys.all }),
   });
 }
 
@@ -47,8 +48,8 @@ export function useDeleteTask() {
   return useMutation({
     mutationFn: (id: string) => tasksApi.remove(id),
     onSuccess: (_data, id) => {
-      queryClient.removeQueries({ queryKey: queryKeys.task(id) });
-      return queryClient.invalidateQueries({ queryKey: queryKeys.taskLists });
+      queryClient.removeQueries({ queryKey: taskQueryKeys.detail(id) });
+      return queryClient.invalidateQueries({ queryKey: taskQueryKeys.lists });
     },
   });
 }
@@ -57,7 +58,7 @@ type ListSnapshot = [QueryKey, Page<Task> | undefined][];
 
 /**
  * Optimistically flips a task's status in every cached list, rolling back if the server disagrees.
- * Used for "complete" (POST /complete) and "reopen" (PATCH status=pending).
+ * Used for "complete" (POST /complete) and "reopen" (POST /reopen); both allowed for owner or assignee.
  */
 function useOptimisticStatus(
   mutationFn: (id: string) => Promise<Task>,
@@ -69,12 +70,12 @@ function useOptimisticStatus(
   return useMutation({
     mutationFn,
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.taskLists });
+      await queryClient.cancelQueries({ queryKey: taskQueryKeys.lists });
       const snapshot: ListSnapshot = queryClient.getQueriesData<Page<Task>>({
-        queryKey: queryKeys.taskLists,
+        queryKey: taskQueryKeys.lists,
       });
       queryClient.setQueriesData<Page<Task>>(
-        { queryKey: queryKeys.taskLists },
+        { queryKey: taskQueryKeys.lists },
         (page) =>
           page && {
             ...page,
@@ -97,7 +98,7 @@ function useOptimisticStatus(
       toast.error(`${messages.failure}: ${errorMessage(error)}`);
     },
     onSuccess: () => toast.success(messages.success),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.tasks }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: taskQueryKeys.all }),
   });
 }
 
@@ -109,7 +110,7 @@ export function useCompleteTask() {
 }
 
 export function useReopenTask() {
-  return useOptimisticStatus((id) => tasksApi.update(id, { status: "pending" }), "pending", {
+  return useOptimisticStatus((id) => tasksApi.reopen(id), "pending", {
     success: "Task reopened",
     failure: "Could not reopen the task",
   });

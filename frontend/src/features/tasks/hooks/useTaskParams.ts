@@ -11,10 +11,15 @@ export function useTaskParams() {
   const params = useMemo(() => parseTaskParams(search), [search]);
 
   const update = useCallback(
-    (changes: Partial<TaskListParams>) => {
+    (changes: Partial<TaskListParams>, options: { replace?: boolean } = {}) => {
       // Any filter change sends the user back to the first page.
       const resetsPage = !("page" in changes);
-      setSearch(serializeTaskParams({ ...params, ...(resetsPage ? { page: 1 } : {}), ...changes }));
+      setSearch(
+        serializeTaskParams({ ...params, ...(resetsPage ? { page: 1 } : {}), ...changes }),
+        {
+          replace: options.replace ?? false,
+        },
+      );
     },
     [params, setSearch],
   );

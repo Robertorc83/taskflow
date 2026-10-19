@@ -55,9 +55,20 @@ async function toApiError(response: Response): Promise<ApiError> {
   return new ApiError(problem, Number.isNaN(retryAfter) ? null : retryAfter);
 }
 
+/** The user's IANA time zone; the server uses it to decide what "today" is (past dates, overdue). */
+export function currentTimeZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
 function send(path: string, options: RequestOptions, token: string | null): Promise<Response> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
+  const timeZone = currentTimeZone();
+  if (timeZone) headers["X-Timezone"] = timeZone;
   if (token) headers.Authorization = `Bearer ${token}`;
   return fetch(buildUrl(path, options.query), {
     method: options.method ?? "GET",
@@ -66,24 +77,34 @@ function send(path: string, options: RequestOptions, token: string | null): Prom
   });
 }
 
-let refreshInFlight: Promise<boolean> | null = null;
+/**
+ * - `refreshed`: new tokens stored.
+ * - `rejected`: the server says the refresh token is invalid; the session is over.
+ * - `unavailable`: rate limited, server or network error; the session may still be valid.
+ */
+export type RefreshOutcome = "refreshed" | "rejected" | "unavailable";
+
+const SESSION_REJECTED_STATUSES = new Set([400, 401, 422]);
+
+let refreshInFlight: Promise<RefreshOutcome> | null = null;
 
 /** Exchanges the refresh token once; concurrent callers share the same attempt. */
-export function refreshSession(): Promise<boolean> {
-  refreshInFlight ??= (async () => {
+export function refreshSession(): Promise<RefreshOutcome> {
+  refreshInFlight ??= (async (): Promise<RefreshOutcome> => {
     const refreshToken = tokenStorage.getRefreshToken();
-    if (!refreshToken) return false;
+    if (!refreshToken) return "rejected";
     try {
       const response = await send(
         "/auth/refresh",
         { method: "POST", body: { refresh_token: refreshToken } },
         null,
       );
-      if (!response.ok) return false;
+      if (SESSION_REJECTED_STATUSES.has(response.status)) return "rejected";
+      if (!response.ok) return "unavailable";
       tokenStorage.save((await response.json()) as TokenPair);
-      return true;
+      return "refreshed";
     } catch {
-      return false;
+      return "unavailable";
     }
   })().finally(() => {
     refreshInFlight = null;
@@ -96,10 +117,12 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   let response = await send(path, options, useAuth ? tokenStorage.getAccessToken() : null);
 
   if (response.status === 401 && useAuth) {
-    if (await refreshSession()) {
+    const outcome = await refreshSession();
+    if (outcome === "refreshed") {
       response = await send(path, options, tokenStorage.getAccessToken());
     }
-    if (response.status === 401) {
+    // Only a definitive rejection ends the session; transient refresh failures keep the tokens.
+    if (outcome === "rejected" || (outcome === "refreshed" && response.status === 401)) {
       tokenStorage.clear();
     }
   }

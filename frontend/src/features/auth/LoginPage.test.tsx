@@ -74,7 +74,31 @@ describe("Given I am on the login page", () => {
     await user.click(screen.getByRole("button", { name: /bob@example\.com/ }));
 
     expect(screen.getByLabelText("Email")).toHaveValue("bob@example.com");
-    expect(screen.getByLabelText("Password")).toHaveValue("Bob123!");
+    expect(screen.getByLabelText("Password")).toHaveValue("Bob12345!");
+  });
+});
+
+describe("Given a production build", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("when demo mode is off, then no demo credentials are shown (F4)", async () => {
+    vi.stubEnv("DEV", false);
+    vi.stubEnv("VITE_DEMO_MODE", "false");
+
+    renderApp("/login", { authenticated: false });
+
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Demo accounts" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Alice123!")).not.toBeInTheDocument();
+  });
+
+  it("when demo mode is explicitly enabled, then the demo credentials are shown (F4)", async () => {
+    vi.stubEnv("DEV", false);
+    vi.stubEnv("VITE_DEMO_MODE", "true");
+
+    renderApp("/login", { authenticated: false });
+
+    expect(await screen.findByRole("heading", { name: "Demo accounts" })).toBeInTheDocument();
   });
 });
 

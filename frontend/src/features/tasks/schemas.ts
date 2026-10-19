@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 import { todayIso } from "@/lib/dates";
+import { LIMITS } from "@/lib/limits";
 
-// Mirrors SPEC-002 R2/R3: required trimmed title ≤ 200, description ≤ 2000, due date not in the past.
+// Mirrors SPEC-002 R2/R3: required trimmed title, bounded description, due date not in the past.
 export function taskFormSchema({
   isNew,
   originalDueDate,
@@ -11,8 +12,14 @@ export function taskFormSchema({
   originalDueDate?: string | null;
 }) {
   return z.object({
-    title: z.string().trim().min(1, "Title is required").max(200, "At most 200 characters"),
-    description: z.string().max(2000, "At most 2000 characters"),
+    title: z
+      .string()
+      .trim()
+      .min(1, "Title is required")
+      .max(LIMITS.taskTitleMax, `At most ${LIMITS.taskTitleMax} characters`),
+    description: z
+      .string()
+      .max(LIMITS.taskDescriptionMax, `At most ${LIMITS.taskDescriptionMax} characters`),
     due_date: z
       .string()
       .refine(

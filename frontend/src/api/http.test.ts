@@ -34,6 +34,30 @@ describe("Given an authenticated session", () => {
     expect(db.refreshCalls).toBe(1);
   });
 
+  it("when the refresh endpoint is rate limited, then the session is kept and the original error surfaces", async () => {
+    db.validAccessTokens.delete("access-alice");
+    server.use(http.post("*/api/v1/auth/refresh", () => problem(429, "Too Many Requests")));
+
+    await expect(request("/users/me")).rejects.toMatchObject({ status: 401 });
+    expect(tokenStorage.hasSession()).toBe(true);
+  });
+
+  it("when the refresh request fails on the network, then the session is kept", async () => {
+    db.validAccessTokens.delete("access-alice");
+    server.use(http.post("*/api/v1/auth/refresh", () => HttpResponse.error()));
+
+    await expect(request("/users/me")).rejects.toMatchObject({ status: 401 });
+    expect(tokenStorage.hasSession()).toBe(true);
+  });
+
+  it("when the refresh endpoint fails with a server error, then the session is kept", async () => {
+    db.validAccessTokens.delete("access-alice");
+    server.use(http.post("*/api/v1/auth/refresh", () => problem(503, "Service Unavailable")));
+
+    await expect(request("/users/me")).rejects.toMatchObject({ status: 401 });
+    expect(tokenStorage.hasSession()).toBe(true);
+  });
+
   it("when the refresh token is rejected too, then the session is cleared", async () => {
     db.validAccessTokens.delete("access-alice");
     db.refreshTokens.clear();
@@ -65,6 +89,39 @@ describe("Given any API call", () => {
     const error = await request("/users/me", { auth: false }).catch((e: unknown) => e);
 
     expect(error).toMatchObject({ status: 502, retryAfter: null });
+  });
+
+  it("when a request is sent, then it carries the user's IANA time zone", async () => {
+    let timeZone: string | null = null;
+    server.use(
+      http.get("*/api/v1/things", ({ request: req }) => {
+        timeZone = req.headers.get("X-Timezone");
+        return HttpResponse.json([]);
+      }),
+    );
+
+    await request("/things", { auth: false });
+
+    expect(timeZone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    expect(timeZone).toBeTruthy();
+  });
+
+  it("when the time zone cannot be resolved, then the header is omitted", async () => {
+    const spy = vi.spyOn(Intl, "DateTimeFormat").mockImplementation(() => {
+      throw new Error("no Intl");
+    });
+    let seen: string | null = "unset";
+    server.use(
+      http.get("*/api/v1/things", ({ request: req }) => {
+        seen = req.headers.get("X-Timezone");
+        return HttpResponse.json([]);
+      }),
+    );
+
+    await request("/things", { auth: false });
+
+    spy.mockRestore();
+    expect(seen).toBeNull();
   });
 
   it("when the server returns 204, then the result is undefined", async () => {

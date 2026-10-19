@@ -19,7 +19,7 @@ export const BOB: User = {
 
 export const PASSWORDS: Record<string, string> = {
   [ALICE.email]: "Alice123!",
-  [BOB.email]: "Bob123!",
+  [BOB.email]: "Bob12345!",
 };
 
 const summary = ({ id, email, full_name }: User) => ({ id, email, full_name });

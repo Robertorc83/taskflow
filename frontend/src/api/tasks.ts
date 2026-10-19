@@ -12,6 +12,7 @@ export const tasksApi = {
     request<Task>(`/tasks/${id}`, { method: "PATCH", body: input }),
   remove: (id: string) => request<undefined>(`/tasks/${id}`, { method: "DELETE" }),
   complete: (id: string) => request<Task>(`/tasks/${id}/complete`, { method: "POST" }),
+  reopen: (id: string) => request<Task>(`/tasks/${id}/reopen`, { method: "POST" }),
   assign: (id: string, assigneeId: string | null) =>
     request<Task>(`/tasks/${id}/assignee`, { method: "PUT", body: { assignee_id: assigneeId } }),
 };

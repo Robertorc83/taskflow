@@ -35,6 +35,56 @@ export default tseslint.config(
       ],
     },
   },
+  // Module boundaries: shared layers must not depend on the code that uses them.
+  {
+    files: ["src/components/ui/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/*", "@/api/*", "**/features/**", "**/api/**"],
+              message: "UI primitives must stay feature- and API-agnostic.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/api/**/*.{ts,tsx}"],
+    ignores: ["src/api/**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/*", "@/components/*", "**/features/**", "**/components/**"],
+              message: "The API layer must not depend on UI or features.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/lib/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/*", "@/components/*", "**/features/**", "**/components/**"],
+              message: "lib/ holds generic helpers; feature code belongs in its feature.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   {
     files: ["src/**/*.test.{ts,tsx}", "src/test/**", "e2e/**"],
     rules: {

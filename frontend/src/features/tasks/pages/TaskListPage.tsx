@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, useSearchParams } from "react-router-dom";
 
 import type { Task } from "@/api/types";
 import { Button } from "@/components/ui/Button";
+import { buttonClasses } from "@/components/ui/buttonStyles";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pagination } from "@/components/ui/Pagination";
 import { Spinner } from "@/components/ui/Spinner";
@@ -32,6 +33,18 @@ export function TaskListPage() {
 
   const withSearch = (pathname: string) => ({ pathname, search: search.toString() });
 
+  // A page past the end (stale URL, or the last item on the last page was deleted): go to the
+  // last page that exists instead of showing an empty list.
+  const lastPage = tasks.data?.pages ?? 0;
+  const isPastEnd =
+    tasks.data !== undefined &&
+    !tasks.isPlaceholderData &&
+    tasks.data.items.length === 0 &&
+    params.page > 1;
+  useEffect(() => {
+    if (isPastEnd) update({ page: Math.max(1, lastPage) }, { replace: true });
+  }, [isPastEnd, lastPage, update]);
+
   const confirmDelete = () => {
     if (!pendingDelete) return;
     deleteTask.mutate(pendingDelete.id, {
@@ -44,7 +57,7 @@ export function TaskListPage() {
   };
 
   let content;
-  if (tasks.isPending) {
+  if (tasks.isPending || isPastEnd) {
     content = <TaskListSkeleton />;
   } else if (tasks.isError) {
     content = (
@@ -72,10 +85,7 @@ export function TaskListPage() {
         title="No tasks yet"
         description="Create your first task to get started."
         action={
-          <Link
-            to={withSearch("/tasks/new")}
-            className="inline-flex h-10 items-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
-          >
+          <Link to={withSearch("/tasks/new")} className={buttonClasses()}>
             New task
           </Link>
         }
@@ -121,10 +131,7 @@ export function TaskListPage() {
           {tasks.isFetching && !tasks.isPending && (
             <Spinner className="h-4 w-4 text-slate-400" label="Refreshing" />
           )}
-          <Link
-            to={withSearch("/tasks/new")}
-            className="inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-          >
+          <Link to={withSearch("/tasks/new")} className={buttonClasses({ className: "gap-1.5" })}>
             <span aria-hidden="true" className="text-base leading-none">
               +
             </span>{" "}
