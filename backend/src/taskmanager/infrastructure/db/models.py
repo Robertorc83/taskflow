@@ -15,7 +15,7 @@ from sqlalchemy import (
     String,
     Uuid,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from taskmanager.domain.entities.task import DESCRIPTION_MAX_LENGTH, TITLE_MAX_LENGTH
 from taskmanager.domain.entities.user import FULL_NAME_MAX_LENGTH
@@ -76,3 +76,8 @@ class TaskModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Never loaded (lazy="raise"): they exist so the unit of work inserts users before the tasks
+    # that reference them when both are added in one transaction.
+    owner: Mapped[UserModel] = relationship(foreign_keys=[owner_id], lazy="raise")
+    assignee: Mapped[UserModel | None] = relationship(foreign_keys=[assignee_id], lazy="raise")

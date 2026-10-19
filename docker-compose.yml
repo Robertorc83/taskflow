@@ -1,0 +1,68 @@
+name: taskmanager
+
+x-backend-env: &backend-env
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  DATABASE_URL: postgresql+asyncpg://taskmanager:taskmanager@db:5432/taskmanager
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-in-production!!}
+  RATE_LIMIT_AUTH: ${RATE_LIMIT_AUTH:-10/minute}
+  RATE_LIMIT_API: ${RATE_LIMIT_API:-100/minute}
+  CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173"]'
+  LOG_LEVEL: INFO
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: taskmanager
+      POSTGRES_PASSWORD: taskmanager
+      POSTGRES_DB: taskmanager
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskmanager"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./backend
+    environment: *backend-env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: ./backend
+    command: ["celery", "-A", "taskmanager.infrastructure.tasks.worker", "worker", "--loglevel=INFO", "--concurrency=2"]
+    environment: *backend-env
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
+        condition: service_healthy  # migrations have run
+
+  web:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:

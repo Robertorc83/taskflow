@@ -117,13 +117,13 @@ export function TaskListPage() {
             Everything you own or that&apos;s assigned to you.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           {tasks.isFetching && !tasks.isPending && (
             <Spinner className="h-4 w-4 text-slate-400" label="Refreshing" />
           )}
           <Link
             to={withSearch("/tasks/new")}
-            className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            className="inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
           >
             <span aria-hidden="true" className="text-base leading-none">
               +

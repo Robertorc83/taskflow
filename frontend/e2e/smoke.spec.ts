@@ -10,9 +10,10 @@ function trackConsole(page: Page): string[] {
   return messages;
 }
 
-test("login → create → filter → complete → delete", async ({ page, isMobile }) => {
+test("login → create → filter → complete → delete", async ({ page, isMobile }, testInfo) => {
   const consoleMessages = trackConsole(page);
-  const title = `Smoke test ${Date.now()}`;
+  // Projects run in parallel: the project name keeps titles unique across them.
+  const title = `Smoke test ${testInfo.project.name} ${Date.now()}`;
 
   await page.goto("/tasks");
   await expect(page).toHaveURL(/\/login$/);

@@ -65,7 +65,7 @@ export const InputField = forwardRef<
         id={fieldId}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(fieldId, error, hint)}
-        className={cn(controlClass, error ? "ring-rose-400" : "ring-slate-300", className)}
+        className={cn(controlClass, "h-10", error ? "ring-rose-400" : "ring-slate-300", className)}
         {...props}
       />
     </FieldShell>
@@ -110,7 +110,12 @@ export const SelectField = forwardRef<
         id={fieldId}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(fieldId, error, hint)}
-        className={cn(controlClass, "pr-8", error ? "ring-rose-400" : "ring-slate-300", className)}
+        className={cn(
+          controlClass,
+          "h-10 pr-8",
+          error ? "ring-rose-400" : "ring-slate-300",
+          className,
+        )}
         {...props}
       >
         {children}
