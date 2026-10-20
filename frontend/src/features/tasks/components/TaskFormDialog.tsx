@@ -1,6 +1,7 @@
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@/api/types";
+import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/toastContext";
@@ -79,9 +80,16 @@ export function TaskFormDialog() {
     );
   } else if (isEdit && (existing.isError || forbidden)) {
     body = (
-      <p role="alert" className="text-sm text-rose-700">
-        {existing.isError ? errorMessage(existing.error) : "Only the owner can edit this task."}
-      </p>
+      <div className="space-y-5">
+        <p role="alert" className="text-sm text-rose-700">
+          {existing.isError ? errorMessage(existing.error) : "Only the owner can edit this task."}
+        </p>
+        <div className="flex justify-end">
+          <Button variant="secondary" onClick={close}>
+            Back to tasks
+          </Button>
+        </div>
+      </div>
     );
   } else {
     body = (

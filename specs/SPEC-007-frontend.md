@@ -43,6 +43,8 @@ Tailwind CSS · Vitest + Testing Library + MSW · Playwright (smoke E2E).
   create), assignee (select filled from `GET /users`).
 - **F11** Server validation errors (`422`) are mapped onto the matching fields.
 - **F12** Only the owner sees edit, assign and delete controls. The assignee sees complete and reopen.
+  *(CR-014)* If a task can't be edited (not found, or not the owner), the dialog says why and offers
+  **Back to tasks**, keeping the list's filters.
 
 ### Global
 - **F13** An expired access token is refreshed once, transparently. If the refresh endpoint
@@ -88,3 +90,4 @@ Component and page tests are named in Given/When/Then form, for example
 |-----|------------|-----------------|--------|----|
 | 1   | 2026-10-19 | Initial version | —      | —  |
 | 2 | 2026-10-19 | F13 refined; F17 added; module boundaries enforced by ESLint | Review findings | [CR-008](changes/CR-008-frontend-robustness.md) |
+| 3 | 2026-10-19 | F12: no dead-end edit dialog | Manual QA | [CR-014](changes/CR-014-no-dead-end-edit-dialog.md) |

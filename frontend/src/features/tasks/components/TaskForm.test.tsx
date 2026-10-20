@@ -172,4 +172,15 @@ describe("Given a task I do not own", () => {
       expect(within(dialog).getByRole("alert")).toHaveTextContent("Task not found"),
     );
   });
+
+  it("when the task does not exist, then I can go back to my tasks", async () => {
+    const { user, router } = renderApp("/tasks/does-not-exist/edit?status=pending");
+
+    const dialog = await screen.findByRole("dialog", { name: "Edit task" });
+    await user.click(await within(dialog).findByRole("button", { name: "Back to tasks" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(router.state.location.pathname).toBe("/tasks");
+    expect(router.state.location.search).toBe("?status=pending");
+  });
 });
