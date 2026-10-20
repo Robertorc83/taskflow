@@ -43,3 +43,9 @@ Feature: Asynchronous notifications
     Then the response status should be 200
     And the response should arrive within 3 seconds
     And the enqueue failure should be logged
+
+  # SPEC-005 R8, SPEC-000 NFR-10 (CR-013)
+  Scenario: A notification can be traced to the request that caused it
+    When I assign the task to "bob@example.com" with request ID "assign-7"
+    Then "bob@example.com" should receive a notification mentioning "Prepare demo"
+    And the notification job should run under request ID "assign-7"

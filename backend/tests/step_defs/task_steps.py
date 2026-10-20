@@ -158,6 +158,19 @@ def assign_task(world: World, email: str) -> None:
     world.request("PUT", _task_path(world, "/assignee"), json={"assignee_id": assignee_id})
 
 
+@when(
+    parsers.re(f"I assign the task to {Q.format('email')} with request ID {Q.format('request_id')}")
+)
+def assign_task_with_request_id(world: World, email: str, request_id: str) -> None:
+    assignee_id = world.ensure_user(email)
+    world.request(
+        "PUT",
+        _task_path(world, "/assignee"),
+        json={"assignee_id": assignee_id},
+        headers={"X-Request-ID": request_id},
+    )
+
+
 @when("I assign the task to an unknown user")
 def assign_task_to_unknown(world: World) -> None:
     world.request("PUT", _task_path(world, "/assignee"), json={"assignee_id": str(uuid4())})

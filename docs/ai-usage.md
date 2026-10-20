@@ -302,3 +302,28 @@ producer app, `memory://` broker in tests), not a patch to the test.
 TLS checks against the real image (also run in CI); the full stack over HTTPS (redirect, HTTP/2
 login, headers); Playwright on the HTTP stack; 201 backend tests at 97% coverage; `make lint`; no
 API type drift.
+
+---
+
+## 9. Manual QA follow-ups (CR-013, CR-014)
+
+**Prompt:**
+> Run the stack locally and test it by hand, as a user would: every user story, both permission
+> roles, validation, and a phone-width viewport, with the browser console open. Report what works
+> and what doesn't. Then fix the two findings (the dead-end "Task not found" dialog, and worker
+> logs without a request ID), and prove each fix works before pushing.
+
+| # | Problem | Caught by | Fix |
+|---|---------|-----------|-----|
+| 31 | The new tracing scenario **passed before any fix**: eager mode ran the job in a thread that inherited the caller's context, so the ID leaked across a boundary that, in production, is a separate process | Running the scenario before writing the fix, as the workflow requires | Eager mode runs jobs in an empty `contextvars.Context`; the scenario went red for the right reason, then green |
+| 32 | A first draft put the tracing hook in `tests/fakes.py`, importing infrastructure into the unit-test fakes, which CR-009 had deliberately cut | Self-review against CR-009 | A `TracingNotifier` subclass in the acceptance steps |
+| 33 | Typing `Task[Any, Any]` satisfied mypy, but **crashed at import**: Celery's `Task` is generic only in its stubs | The full test run (lint alone was green) | Quoted annotation |
+| 34 | The "not found" edit dialog had no way out except Escape or tapping the backdrop | Manual QA at phone width | "Back to tasks" button, test first |
+
+**Validation:** scenario and component tests were each observed red, then green; 202 backend and
+67 frontend tests pass; `make lint` is clean; a live trace through the real Redis broker
+(`qa-trace-001` on both the API line and the worker lines, and no ID carried into the next job);
+the browser at phone width; Playwright on desktop and mobile.
+
+**Lesson:** a test can only prove a boundary if the test reproduces it. In-process eager mode had
+quietly removed the very boundary the feature exists to cross.

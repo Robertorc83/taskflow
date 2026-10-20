@@ -1,7 +1,11 @@
+from dataclasses import dataclass, field
+
 import pytest
 from pytest_bdd import given, parsers, then
 
+from taskmanager.application.ports import Notification
 from taskmanager.infrastructure.config import Settings
+from taskmanager.infrastructure.logging import request_id_var
 from taskmanager.infrastructure.tasks import jobs  # noqa: F401 — registers the jobs
 from taskmanager.infrastructure.tasks.celery_app import celery_app, create_celery_app
 from taskmanager.infrastructure.tasks.publisher import CeleryEventPublisher
@@ -11,11 +15,22 @@ from tests.step_defs.patterns import QUOTED as Q
 from tests.step_defs.world import World
 
 
+@dataclass
+class TracingNotifier(RecordingNotifier):
+    """Also records the request ID each notification was sent under (CR-013)."""
+
+    request_ids: list[str | None] = field(default_factory=list)
+
+    async def send(self, notification: Notification) -> None:
+        await super().send(notification)
+        self.request_ids.append(request_id_var.get())
+
+
 @given("background jobs run immediately")
 def background_jobs_run_eagerly(
     world: World, test_settings: Settings, request: pytest.FixtureRequest
 ) -> None:
-    notifier = RecordingNotifier()
+    notifier = TracingNotifier()
     configure_worker(WorkerRuntime(settings=test_settings, notifier=notifier))
     previous = {k: celery_app.conf[k] for k in ("task_always_eager", "task_eager_propagates")}
     celery_app.conf.update(task_always_eager=True, task_eager_propagates=True)
@@ -60,6 +75,12 @@ def receives_no_completion_notification(world: World, email: str) -> None:
 @then(parsers.parse("the response should arrive within {seconds:d} seconds"))
 def response_is_fast(world: World, seconds: int) -> None:
     assert world.response.elapsed.total_seconds() < seconds, world.response.elapsed
+
+
+@then(parsers.re(f"the notification job should run under request ID {Q.format('request_id')}"))
+def job_runs_under_request_id(world: World, request_id: str) -> None:
+    assert isinstance(world.notifier, TracingNotifier)
+    assert world.notifier.request_ids == [request_id], world.notifier.request_ids
 
 
 @then("no notification should be sent")

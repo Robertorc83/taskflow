@@ -62,3 +62,5 @@ Feature files live in [`backend/tests/features/`](../backend/tests/features).
 | [CR-010](changes/CR-010-request-tracing-and-structured-logs.md) | 2026-10-19 | Request tracing and structured logs | SPEC-000 | Implemented |
 | [CR-011](changes/CR-011-generated-api-types-and-e2e-in-ci.md) | 2026-10-19 | Generated API types with a drift check; E2E in CI | SPEC-007, SPEC-008 | Implemented |
 | [CR-012](changes/CR-012-tls-and-production-api-docs.md) | 2026-10-19 | TLS termination at nginx; API docs off in production | SPEC-000, SPEC-008 | Implemented |
+| [CR-013](changes/CR-013-traceable-background-jobs.md) | 2026-10-19 | Background jobs log under the enqueuing request's ID | SPEC-005 | Implemented |
+| [CR-014](changes/CR-014-no-dead-end-edit-dialog.md) | 2026-10-19 | "Back to tasks" when a task can't be edited | SPEC-007 | Implemented |

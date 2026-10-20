@@ -229,6 +229,9 @@ See **[docs/ai-usage.md](docs/ai-usage.md)** for:
 
 - Every response carries an `X-Request-ID`. A caller can supply a safe one (`[A-Za-z0-9._-]{1,64}`);
   anything else is replaced, so untrusted input can't forge log lines.
+- The request ID travels with background jobs in the message headers, so
+  `docker compose logs api worker | grep <id>` shows a request and every notification it caused
+  (CR-013).
 - Containers log one JSON object per line, with `request_id`, `method`, `path`, `status` and
   `duration_ms`. Set `LOG_FORMAT=text` for readable local logs.
 - **TLS** ends at nginx and fails closed without a certificate; plain HTTP only redirects, apart

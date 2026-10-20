@@ -24,6 +24,8 @@ request. It runs in a background worker.
   the task was deleted in the meantime, the job is a no-op.
 - **R7** *(CR-001)* Publishing waits at most `EVENT_PUBLISH_TIMEOUT_SECONDS` (default 2 s). An
   unreachable broker never adds more than that to a request's latency.
+- **R8** *(CR-013)* A job's log lines carry the `request_id` of the API request that enqueued it,
+  so one ID finds the request and every notification it caused.
 
 ## Flow
 
@@ -43,6 +45,7 @@ Use case ──commit──► EventPublisher.publish(event)
 | R2 | The owner is notified when the assignee completes the task · Nobody is notified when I complete my own unassigned task |
 | R4, R7 | A broker outage does not fail the request (status 200, under 3 s) |
 | R6 | Covered by unit tests (`test_notifications.py`) |
+| R8 | A notification can be traced to the request that caused it |
 | R5 | Celery task configuration (`autoretry_for`, `retry_backoff`, `max_retries=3`) |
 
 ## Design notes
@@ -61,3 +64,4 @@ Use case ──commit──► EventPublisher.publish(event)
 | 1   | 2026-10-19 | Initial version | —      | —  |
 | 2   | 2026-10-19 | Added R7: bounded publish latency | Outage blocked requests ~6 s (redis-py retries) | [CR-001](changes/CR-001-bound-latency-on-broker-outage.md) |
 | 3 | 2026-10-19 | Jobs sent by name; transient-only retries; loud unknown events; honest tests | API imported worker; tests leaked into a real Redis | [CR-007](changes/CR-007-background-job-wiring.md) |
+| 4 | 2026-10-19 | R8: jobs log under the enqueuing request's ID | Worker logs had `request_id: null` | [CR-013](changes/CR-013-traceable-background-jobs.md) |

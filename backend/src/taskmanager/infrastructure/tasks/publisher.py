@@ -1,10 +1,12 @@
 import asyncio
+import contextvars
 import logging
 from functools import partial
 
 from celery import Celery
 
 from taskmanager.domain.events import DomainEvent, TaskAssigned, TaskCompleted
+from taskmanager.infrastructure.logging import request_id_var
 from taskmanager.infrastructure.tasks import names
 
 logger = logging.getLogger(__name__)
@@ -34,12 +36,16 @@ class CeleryEventPublisher:
             logger.exception("Could not enqueue background job for %s", type(event).__name__)
 
     def _dispatch(self, name: str, kwargs: dict[str, str]) -> None:
+        # The request ID travels in the message so the worker's logs correlate (CR-013).
+        request_id = request_id_var.get()
+        headers = {names.REQUEST_ID_HEADER: request_id} if request_id else {}
         registered = self._app.tasks.get(name)
         if registered is not None and self._app.conf.task_always_eager:
-            # Eager mode (tests, local debugging): run the registered job in-process.
-            registered.apply(kwargs=kwargs, throw=True)
+            # Eager mode (tests, local debugging): run the registered job in-process, in an empty
+            # context like a real worker process, so nothing leaks across except the message.
+            contextvars.Context().run(registered.apply, kwargs=kwargs, headers=headers, throw=True)
         else:
-            partial(self._app.send_task, name, kwargs=kwargs, retry=False)()
+            partial(self._app.send_task, name, kwargs=kwargs, headers=headers, retry=False)()
 
     @staticmethod
     def _job_for(event: DomainEvent) -> tuple[str, dict[str, str]]:
