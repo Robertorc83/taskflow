@@ -1,4 +1,4 @@
-"""Fail-closed configuration (CR-002) and publisher dispatch (CR-007)."""
+"""Fail-closed configuration (CR-002, CR-012) and publisher dispatch (CR-007)."""
 
 import pytest
 from pydantic import SecretStr, ValidationError
@@ -39,3 +39,23 @@ async def test_publisher_rejects_unknown_events_loudly() -> None:
 
     with pytest.raises(TypeError, match="No background job"):
         await CeleryEventPublisher(celery_app).publish(object())  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("environment", "flag", "expected"),
+    [
+        ("development", None, True),
+        ("production", None, False),
+        ("production", True, True),
+        ("development", False, False),
+    ],
+)
+def test_api_docs_are_published_everywhere_but_production_unless_configured(
+    environment: str, flag: bool | None, expected: bool
+) -> None:
+    settings = Settings(
+        environment=environment,
+        jwt_secret=SecretStr("x" * 32),
+        api_docs_enabled=flag,
+    )
+    assert settings.publishes_api_docs is expected

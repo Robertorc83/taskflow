@@ -76,6 +76,10 @@ services:
       context: ./frontend
       args:
         VITE_DEMO_MODE: "true"  # show demo credentials on the login page
+    environment:
+      # The image defaults to TLS and refuses to start without a certificate (CR-012). Local
+      # demo runs over plain HTTP; `make up-tls` layers docker-compose.tls.yml on top.
+      NGINX_TLS: "false"
     networks:
       default:
         ipv4_address: 172.28.0.10

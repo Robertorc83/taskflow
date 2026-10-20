@@ -61,3 +61,4 @@ Feature files live in [`backend/tests/features/`](../backend/tests/features).
 | [CR-009](changes/CR-009-test-suite-modularity.md) | 2026-10-19 | Test-suite modularity (no behavior change) | — | Implemented |
 | [CR-010](changes/CR-010-request-tracing-and-structured-logs.md) | 2026-10-19 | Request tracing and structured logs | SPEC-000 | Implemented |
 | [CR-011](changes/CR-011-generated-api-types-and-e2e-in-ci.md) | 2026-10-19 | Generated API types with a drift check; E2E in CI | SPEC-007, SPEC-008 | Implemented |
+| [CR-012](changes/CR-012-tls-and-production-api-docs.md) | 2026-10-19 | TLS termination at nginx; API docs off in production | SPEC-000, SPEC-008 | Implemented |

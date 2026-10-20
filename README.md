@@ -41,6 +41,18 @@ and refuses the dev JWT secret: it defaults to `ENVIRONMENT=production` and fail
 | `bob@example.com` | `Bob12345!` |
 | `carol@example.com` | `Carol123!` |
 
+### HTTPS
+
+```bash
+make up-tls      # self-signed certificate in certs/, then the same stack on https://localhost
+```
+
+The web image terminates TLS itself (TLS 1.2+, HTTP/2, HSTS) and **refuses to start without a
+certificate** (CR-012). The default `make up` opts out with `NGINX_TLS=false` so the demo needs no
+certificate. In a real deployment, mount the CA-issued certificate and key at
+`/etc/nginx/certs/tls.crt` and `tls.key`, or set `NGINX_TLS=false` when a load balancer terminates
+TLS in front of it.
+
 The seed creates 25 tasks across all statuses, including overdue ones and tasks assigned between
 users, so filters and pagination have something to show. To watch notifications as you assign or
 complete tasks, run `make logs`.
@@ -70,6 +82,7 @@ make lint        # ruff, mypy --strict, import-linter, eslint, tsc, prettier
 make web-test    # frontend tests + coverage
 make types       # regenerate frontend API types from the backend's OpenAPI document
 make e2e         # Playwright against the running stack
+make tls-check   # black-box TLS checks on the web image
 make help        # everything else
 ```
 
@@ -218,9 +231,13 @@ See **[docs/ai-usage.md](docs/ai-usage.md)** for:
   anything else is replaced, so untrusted input can't forge log lines.
 - Containers log one JSON object per line, with `request_id`, `method`, `path`, `status` and
   `duration_ms`. Set `LOG_FORMAT=text` for readable local logs.
+- **TLS** ends at nginx and fails closed without a certificate; plain HTTP only redirects, apart
+  from `/healthz` for the container health check (CR-012).
+- **API docs** (`/docs`, `/redoc`, `/openapi.json`) are off in production unless
+  `API_DOCS_ENABLED=true`.
 - CI runs three jobs: backend (lint, types, contracts, tests on Postgres), frontend (an **API type
   drift check** plus lint, types, tests and build), then **end-to-end**, where Playwright runs
-  against the full docker compose stack.
+  against the full docker compose stack, plus the TLS checks on the web image.
 
 ## Known limitations / next steps
 

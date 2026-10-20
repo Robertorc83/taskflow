@@ -11,8 +11,11 @@ ENV VITE_DEMO_MODE=$VITE_DEMO_MODE
 RUN npm run build
 
 FROM nginx:1.27-alpine AS runtime
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY security-headers.conf /etc/nginx/snippets/security-headers.conf
+# Both servers ship in the image; select-config.sh links one in at start (TLS unless NGINX_TLS=false).
+COPY nginx/http.conf nginx/https.conf /etc/nginx/servers/
+COPY nginx/app.conf nginx/security-headers.conf /etc/nginx/snippets/
+COPY --chmod=755 nginx/select-config.sh /docker-entrypoint.d/40-select-config.sh
 COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1/ >/dev/null || exit 1
+ENV NGINX_TLS=true
+EXPOSE 80 443
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1/healthz >/dev/null || exit 1

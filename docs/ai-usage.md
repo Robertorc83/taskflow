@@ -269,3 +269,36 @@ producer app, `memory://` broker in tests), not a patch to the test.
 | 23 | Tests passing for the wrong reason (bugs) | Assert no job failed and the failure was logged; this exposed the Redis leak (CR-007) |
 | 24 | Refresh failure always logged out; stale cache after a partial edit; empty last page (bugs) | CR-008 |
 | 25 | Unit tests imported the whole stack (modularity) | Conftest split; verified with `-X importtime` (CR-009) |
+
+---
+
+## 8. Production-readiness pass: TLS and API docs (CR-012)
+
+**Prompt:**
+> Assess whether the system is ready for production traffic. Separate what is already
+> production-grade, the gaps that must be closed before real users, and the trade-offs already
+> documented in the ADRs. Then close the blocking gaps in a new commit, including TLS. Follow the
+> change-request process: scenario or check first, observed red, then the fix.
+
+**What was wrong, including the AI's own mistakes:**
+
+| # | Problem | Caught by | Fix |
+|---|---------|-----------|-----|
+| 26 | **The AI's audit reported the nginx security headers as missing.** They had been in place since CR-002, in an included snippet; the audit had only searched `nginx.conf` | Reading the files before changing them | Corrected to the user before any work started; scope narrowed to TLS and docs |
+| 27 | `/healthz` "passed" against the old image, because the single-page-app fallback returns 200 for any path | Reading the red run: a check that passes before the feature exists proves nothing | The check now requires the body `ok` |
+| 28 | "TLS 1.1 is refused" passed against the old image only because nothing listened on 443 | Same red run | Added "TLS 1.2 is accepted", so the refusal is meaningful |
+| 29 | The first check script used `timeout`, which macOS lacks, and a shell function inside `bash -c` | First local run | Polling `docker inspect` for the exit code; `export -f` |
+| 30 | An HTTP→HTTPS redirect would have broken the container health check, which used `wget http://127.0.0.1/` | Design review before writing the config | `/healthz` is answered on port 80 in both modes |
+
+**Design choices worth defending:**
+- **Fail closed, like the API image.** TLS is the image default, and the container exits without a
+  certificate. Plain HTTP must be chosen explicitly (`NGINX_TLS=false`), as the local stack does.
+- **HSTS only over HTTPS,** through one `$hsts` variable that is empty on plain HTTP, so the
+  security headers stay in a single snippet.
+- **Docs off in production by default,** but opt-in, because some teams publish their API docs on
+  purpose.
+
+**Validation:** the BDD scenarios were red, then green; the setting has a unit test; 11 black-box
+TLS checks against the real image (also run in CI); the full stack over HTTPS (redirect, HTTP/2
+login, headers); Playwright on the HTTP stack; 201 backend tests at 97% coverage; `make lint`; no
+API type drift.

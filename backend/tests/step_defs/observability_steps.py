@@ -1,6 +1,9 @@
 import pytest
-from pytest_bdd import parsers, then, when
+from fastapi.testclient import TestClient
+from pytest_bdd import given, parsers, then, when
 
+from taskmanager.infrastructure.config import Settings
+from taskmanager.presentation.app import create_app
 from tests.step_defs.patterns import QUOTED as Q
 from tests.step_defs.world import World
 
@@ -64,3 +67,38 @@ def request_id_exposed(world: World) -> None:
     response = world.client.get("/health", headers={"Origin": "http://localhost:5173"})
     exposed = response.headers.get("access-control-expose-headers", "").lower()
     assert REQUEST_ID.lower() in exposed, response.headers
+
+
+DOCUMENTATION_PATHS = ("/docs", "/redoc", "/openapi.json")
+
+
+def _run_in_production(world: World, settings: Settings, **overrides: object) -> None:
+    production = settings.model_copy(update={"environment": "production", **overrides})
+    world.client = TestClient(create_app(production, container=world.container))
+
+
+@given("the API runs in production")
+def runs_in_production(world: World, test_settings: Settings) -> None:
+    _run_in_production(world, test_settings)
+
+
+@given("the API runs in production with documentation enabled")
+def runs_in_production_with_docs(world: World, test_settings: Settings) -> None:
+    _run_in_production(world, test_settings, api_docs_enabled=True)
+
+
+@when("I open the API documentation")
+def open_documentation(world: World) -> None:
+    world.responses.extend(world.client.get(path) for path in DOCUMENTATION_PATHS)
+
+
+@then("the API documentation should be available")
+def documentation_available(world: World) -> None:
+    statuses = [response.status_code for response in world.responses[-len(DOCUMENTATION_PATHS) :]]
+    assert statuses == [200] * len(DOCUMENTATION_PATHS)
+
+
+@then("the API documentation should not be found")
+def documentation_not_found(world: World) -> None:
+    statuses = [response.status_code for response in world.responses[-len(DOCUMENTATION_PATHS) :]]
+    assert statuses == [404] * len(DOCUMENTATION_PATHS)

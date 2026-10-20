@@ -83,6 +83,7 @@ layers. Only the adapters differ.
 | NFR-8 | Passwords hashed with Argon2; JWT secret ≥ 32 bytes outside dev            | SPEC-001 |
 | NFR-10 | *(CR-010)* Every response has `X-Request-ID`; every log line carries `request_id`; container logs are JSON | `observability.feature` |
 | NFR-9 | *(CR-002)* Fail closed: the image defaults to production, trusts only the configured proxy, publishes no data stores to the network | `docker compose ps`, CR-002 |
+| NFR-11 | *(CR-012)* Traffic is served over TLS 1.2+ with HSTS; the web image refuses to start without a certificate unless TLS is explicitly delegated upstream | `make tls-check` |
 
 ## Revision history
 
@@ -91,3 +92,4 @@ layers. Only the adapters differ.
 | 1   | 2026-10-19 | Initial version | —      | —  |
 | 2 | 2026-10-19 | Time zone rule; NFR-9 fail-closed deployment | Review findings | [CR-005](changes/CR-005-user-time-zone.md) |
 | 3 | 2026-10-19 | NFR-10 request tracing | CLAUDE.md promised it; code didn't | [CR-010](changes/CR-010-request-tracing-and-structured-logs.md) |
+| 4 | 2026-10-19 | NFR-11 TLS | Production-readiness audit | [CR-012](changes/CR-012-tls-and-production-api-docs.md) |

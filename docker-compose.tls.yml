@@ -1,0 +1,12 @@
+# HTTPS overlay for the local stack (CR-012): `make up-tls`, then open https://localhost.
+# `make certs` creates a self-signed certificate; in a real deployment mount the CA-issued
+# certificate and key the same way, as tls.crt and tls.key.
+
+services:
+  web:
+    environment:
+      NGINX_TLS: "true"
+    ports:
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro

@@ -2,7 +2,7 @@
 BACKEND := cd backend &&
 FRONTEND := cd frontend &&
 
-.PHONY: help up down logs seed install types test test-unit test-bdd lint fmt migrate migration web-test e2e
+.PHONY: help up up-tls certs down logs seed install types test test-unit test-bdd lint fmt migrate migration web-test e2e tls-check
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -10,6 +10,14 @@ help: ## Show available targets
 # ---------------------------------------------------------------- stack
 up: ## Build and start the full stack (http://localhost:3000)
 	docker compose up --build -d
+
+up-tls: certs ## Same stack served over HTTPS with a local certificate (https://localhost)
+	docker compose -f docker-compose.yml -f docker-compose.tls.yml up --build -d
+
+certs: ## Create a self-signed certificate for localhost in certs/ (local TLS only)
+	@test -f certs/tls.crt || (mkdir -p certs && openssl req -x509 -newkey rsa:2048 -nodes \
+		-days 365 -subj "/CN=localhost" -keyout certs/tls.key -out certs/tls.crt \
+		-addext "subjectAltName=DNS:localhost,IP:127.0.0.1" && chmod 644 certs/tls.key)
 
 down: ## Stop the stack
 	docker compose down
@@ -55,6 +63,9 @@ migration: ## Create a migration: make migration m="add x"
 
 web-test: ## Frontend unit/component tests with coverage
 	$(FRONTEND) npx vitest run --coverage
+
+tls-check: ## Black-box TLS checks against the web image (needs Docker)
+	frontend/nginx/tls-check.sh
 
 e2e: ## Playwright smoke test against the running stack
 	$(FRONTEND) E2E_BASE_URL=http://localhost:3000 npm run e2e

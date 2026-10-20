@@ -39,6 +39,8 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
         version="1.0.0",
         description=DESCRIPTION,
         lifespan=lifespan,
+        # Production hides the docs unless API_DOCS_ENABLED=true (CR-012).
+        openapi_url="/openapi.json" if settings.publishes_api_docs else None,
     )
     app.state.container = container
 

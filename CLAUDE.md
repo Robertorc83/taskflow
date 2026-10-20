@@ -338,6 +338,8 @@ make migrate       # alembic upgrade head
 make migration m="msg"  # alembic revision --autogenerate
 make web-test      # vitest run
 make e2e           # playwright
+make up-tls        # stack over HTTPS with a local self-signed certificate (certs/, git-ignored)
+make tls-check     # black-box TLS checks on the web image
 ```
 
 Without Docker (backend): `cd backend && uv sync && uv run pytest`.

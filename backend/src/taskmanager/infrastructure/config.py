@@ -38,6 +38,14 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
+    api_docs_enabled: bool | None = None  # unset: published everywhere except production
+
+    @property
+    def publishes_api_docs(self) -> bool:
+        if self.api_docs_enabled is not None:
+            return self.api_docs_enabled
+        return self.environment != "production"
+
     @property
     def broker_url(self) -> str:
         return self.celery_broker_url or self.redis_url

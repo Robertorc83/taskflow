@@ -18,6 +18,7 @@ frontend/playwright-report/
 
 # Env & OS
 .env
+certs/
 .DS_Store
 .idea/
 .vscode/

@@ -79,6 +79,8 @@ jobs:
         working-directory: frontend
         env:
           E2E_BASE_URL: http://localhost:3000
+      - name: TLS checks on the web image (CR-012)
+        run: frontend/nginx/tls-check.sh
       - name: Stack logs on failure
         if: failure()
         run: docker compose logs --tail=200
